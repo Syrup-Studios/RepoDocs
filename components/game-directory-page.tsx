@@ -1,5 +1,6 @@
-import { BookOpen, ChevronRight, Github, Search } from "lucide-react";
+import { BookOpen, ChevronRight, Github } from "lucide-react";
 import { DocsNav } from "@/components/docs-nav";
+import { DocumentationSearch } from "@/components/documentation-search";
 import { projectBasePath, projectPageHref } from "@/lib/routes";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedProject } from "@/lib/types";
@@ -21,12 +22,14 @@ function projectNavigation(project: CachedProject) {
 export function GameDirectoryPage({
   game,
   projects,
+  searchProjects,
   categories,
   selectedCategory,
   site,
 }: {
   game: string;
   projects: CachedProject[];
+  searchProjects: CachedProject[];
   categories: GameCategory[];
   selectedCategory: string | null;
   site: SiteConfig;
@@ -45,7 +48,7 @@ export function GameDirectoryPage({
         <a className="material-brand" href="/"><span className="material-logo"><BookOpen size={19} /></span><span>{site.name}</span></a>
         <span className="game-header-title">{game}</span>
         <div className="docs-actions">
-          <div className="docs-search" aria-label="Search is not available yet"><Search size={17} /><span>Search</span></div>
+          <DocumentationSearch projects={searchProjects} />
           <a className="header-repository" href={site.repository} target="_blank" rel="noreferrer"><Github size={20} /><span>{repositoryName}</span></a>
         </div>
       </header>

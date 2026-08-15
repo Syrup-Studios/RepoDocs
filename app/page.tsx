@@ -5,9 +5,9 @@ import {
   FileText,
   GitBranch,
   Github,
-  Search,
 } from "lucide-react";
 import { GameDirectoryPage } from "@/components/game-directory-page";
+import { DocumentationSearch } from "@/components/documentation-search";
 import { categorySegment, projectPageHref } from "@/lib/routes";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedProject, GeneratedDocumentation } from "@/lib/types";
@@ -78,6 +78,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
       <GameDirectoryPage
         game="Minecraft"
         projects={typeProjects}
+        searchProjects={projects}
         selectedCategory={selection.category}
         categories={categoryNames.map((category) => ({
           name: category,
@@ -96,7 +97,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
         <header className="docs-header">
           <a className="material-brand" href="/"><span className="material-logo"><BookOpen size={19} /></span><span>{site.name}</span></a>
           <div className="docs-actions">
-            <div className="docs-search" aria-label="Search is not available yet"><Search size={17} /><span>Search</span></div>
+            <DocumentationSearch projects={projects} />
             <a className="header-repository" href={site.repository} target="_blank" rel="noreferrer"><Github size={20} /><span>{new URL(site.repository).pathname.replace(/^\//, "")}</span></a>
           </div>
         </header>
@@ -179,6 +180,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
       <header className="material-header portal-header">
         <a className="material-brand" href="/"><span className="material-logo"><BookOpen size={21} /></span><span>{site.name}</span></a>
         <nav aria-label="Main navigation"><a className="active" href="/#projects">Projects</a><a href="/#how-it-works">How it works</a></nav>
+        <DocumentationSearch projects={projects} />
         <a className="header-repository" href={site.repository} target="_blank" rel="noreferrer"><Github size={19} /><span>Source</span></a>
       </header>
 

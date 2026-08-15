@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { BookOpen, CalendarPlus, ChevronRight, Github, History, Search, UserRound } from "lucide-react";
+import { BookOpen, CalendarPlus, ChevronRight, Github, History, UserRound } from "lucide-react";
 import { DocsNav } from "@/components/docs-nav";
+import { DocumentationSearch } from "@/components/documentation-search";
 import { projectBasePath, projectPageHref } from "@/lib/routes";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedPage, CachedProject, NavItem } from "@/lib/types";
@@ -95,7 +96,7 @@ export function DocumentationPage({
         <a className="material-brand" href="/"><span className="material-logo"><BookOpen size={19} /></span><span>{isMinecraft ? site.name : project.name}</span></a>
         {isMinecraft && <span className="game-header-title">Minecraft</span>}
         <div className="docs-actions">
-          <div className="docs-search" aria-label="Search is not available yet"><Search size={17} /><span>Search</span></div>
+          <DocumentationSearch projects={projects} />
           <a className="header-repository" href={project.repositoryUrl} target="_blank" rel="noreferrer" title="Open repository"><Github size={20} /><span>{repositoryName}</span></a>
         </div>
       </header>

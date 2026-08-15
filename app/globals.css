@@ -173,6 +173,8 @@ button, input { font: inherit; }
 .game-sidebar-empty { max-width: 195px; margin: 9px 0 0 13px; color: #7f8590; font-size: 13px; line-height: 1.6; }
 .classified-docs-navigation { width: 100%; }
 .project-tree { margin-left: 0; }
+.project-tree-link { min-height: 31px; display: flex; align-items: center; color: #aeb2bb; font-size: 15px; }
+.project-tree-link:hover, .project-tree-link.active { color: var(--accent); }
 .project-tree summary { min-height: 31px; display: flex; align-items: center; gap: 6px; color: #aeb2bb; cursor: pointer; font-size: 15px; list-style: none; }
 .project-tree summary::-webkit-details-marker { display: none; }
 .project-tree summary > a { min-width: 0; flex: 1; overflow: hidden; color: inherit; text-overflow: ellipsis; white-space: nowrap; }

@@ -6,7 +6,7 @@ import config from "@/repodocs.config";
 import { categorySegment, projectPageHref } from "@/lib/routes";
 import type { GeneratedDocumentation } from "@/lib/types";
 
-const documentation = generatedData as GeneratedDocumentation;
+const documentation = generatedData as unknown as GeneratedDocumentation;
 
 function knownTypes(): string[] {
   return [...new Set(["minecraft", ...documentation.projects.flatMap((project) => project.documentationType ? [project.documentationType] : [])])];

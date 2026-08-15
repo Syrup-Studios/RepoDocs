@@ -61,15 +61,22 @@ export function GameDirectoryPage({
       <aside className="docs-sidebar game-project-sidebar">
         <div className="game-sidebar-title">{activeCategory?.label ?? "Projects"}</div>
         <nav className="game-project-list" aria-label={`${activeCategory?.label ?? game} projects`}>
-          {visibleProjects.map((project) => (
-            <details className="project-tree" key={project.slug}>
-              <summary>
-                <a href={projectPageHref(project, project.defaultPage)}>{project.name}</a>
-                <ChevronRight className="project-tree-chevron" size={15} aria-hidden="true" />
-              </summary>
-              <DocsNav items={projectNavigation(project)} basePath={projectBasePath(project)} currentPath="__category__" />
-            </details>
-          ))}
+          {visibleProjects.map((project) => {
+            const navigation = projectNavigation(project);
+            const href = projectPageHref(project, project.defaultPage);
+            if (navigation.length === 0) {
+              return <a className="project-tree-link" href={href} key={project.slug}>{project.name}</a>;
+            }
+            return (
+              <details className="project-tree" key={project.slug}>
+                <summary>
+                  <a href={href}>{project.name}</a>
+                  <ChevronRight className="project-tree-chevron" size={15} aria-hidden="true" />
+                </summary>
+                <DocsNav items={navigation} basePath={projectBasePath(project)} currentPath="__category__" />
+              </details>
+            );
+          })}
         </nav>
         {visibleProjects.length === 0 && <p className="game-sidebar-empty">No {activeCategory?.label.toLowerCase() ?? "projects"} are published yet.</p>}
       </aside>

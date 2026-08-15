@@ -82,14 +82,19 @@ export function DocumentationPage({
             <div className="game-sidebar-title">{categoryLabel}</div>
             {categoryProjects.map((listedProject) => {
               const isCurrent = listedProject.slug === project.slug;
+              const navigation = isCurrent ? visibleProjectNavigation : projectNavigation(listedProject);
+              const href = projectPageHref(listedProject, listedProject.defaultPage);
+              if (navigation.length === 0) {
+                return <a className={isCurrent ? "project-tree-link active" : "project-tree-link"} href={href} key={listedProject.slug}>{listedProject.name}</a>;
+              }
               return (
                 <details className={isCurrent ? "project-tree active" : "project-tree"} key={listedProject.slug} open={isCurrent || undefined}>
                   <summary>
-                    <a href={projectPageHref(listedProject, listedProject.defaultPage)}>{listedProject.name}</a>
+                    <a href={href}>{listedProject.name}</a>
                     <ChevronRight className="project-tree-chevron" size={15} aria-hidden="true" />
                   </summary>
                   <DocsNav
-                    items={isCurrent ? visibleProjectNavigation : projectNavigation(listedProject)}
+                    items={navigation}
                     basePath={projectBasePath(listedProject)}
                     currentPath={isCurrent ? currentPath : "__closed__"}
                   />

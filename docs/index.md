@@ -48,7 +48,7 @@ A navigation file can contain pages, named sections, nested lists, and `*` to in
 
 ## Classify the project
 
-An optional `docs/repodocs.yml` file puts a project in the correct directory. For example, use `type: minecraft` with `category: mod` or `category: modpack`. Projects without this file appear under General projects.
+An optional `docs/repodocs.yml` file puts a project in the correct directory. For example, use `type: minecraft` with `category: mod` or `category: modpack`. Set `rootREADME: true` to use the repository's root `README.md` as the project landing page. Projects without this file appear under General projects.
 
 ## Build the site
 

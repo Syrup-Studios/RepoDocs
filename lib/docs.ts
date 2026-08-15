@@ -11,6 +11,7 @@ import { projectBasePath } from "@/lib/routes";
 type ProjectClassification = {
   documentationType: string | null;
   category: string | null;
+  useReadmeFrontPage: boolean;
 };
 
 export class MissingDocumentationError extends Error {
@@ -27,7 +28,7 @@ async function readProjectClassification(docsDirectory: string): Promise<Project
     stats = await lstat(configurationFile);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return { documentationType: null, category: null };
+      return { documentationType: null, category: null, useReadmeFrontPage: false };
     }
     throw new Error("RepoDocs could not read docs/repodocs.yml.", { cause: error });
   }
@@ -42,6 +43,9 @@ async function readProjectClassification(docsDirectory: string): Promise<Project
   if (typeof parsed.type !== "string" || typeof parsed.category !== "string") {
     throw new Error("docs/repodocs.yml must define string values for type and category.");
   }
+  if (parsed.rootREADME !== undefined && typeof parsed.rootREADME !== "boolean") {
+    throw new Error("rootREADME in docs/repodocs.yml must be true or false.");
+  }
 
   const documentationType = parsed.type.trim().toLowerCase();
   const category = parsed.category.trim().toLowerCase();
@@ -51,7 +55,11 @@ async function readProjectClassification(docsDirectory: string): Promise<Project
   if (documentationType === "minecraft" && category !== "mod" && category !== "modpack") {
     throw new Error('Minecraft documentation must use category: "mod" or category: "modpack".');
   }
-  return { documentationType, category };
+  return {
+    documentationType,
+    category,
+    useReadmeFrontPage: parsed.rootREADME === true,
+  };
 }
 
 function pagePathFromFile(relativeFile: string): string {
@@ -372,7 +380,8 @@ export async function buildDocumentation(
   if (!files.length) {
     throw new MissingDocumentationError("The docs/ directory does not contain Markdown files.");
   }
-  const classification = await readProjectClassification(docsDirectory);
+  const projectConfiguration = await readProjectClassification(docsDirectory);
+  const { useReadmeFrontPage, ...classification } = projectConfiguration;
   const root = contentRoot(files);
   const routeBase = projectBasePath({ slug: repository.slug, ...classification });
 
@@ -421,6 +430,47 @@ export async function buildDocumentation(
     };
   }
 
+  let readmePagePath: string | null = null;
+  if (useReadmeFrontPage) {
+    const readmeFile = path.join(repositoryDirectory, "README.md");
+    let readmeStats: Awaited<ReturnType<typeof lstat>>;
+    try {
+      readmeStats = await lstat(readmeFile);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        throw new Error("rootREADME is enabled, but the repository does not have a root README.md file.", { cause: error });
+      }
+      throw error;
+    }
+    if (!readmeStats.isFile() || readmeStats.isSymbolicLink()) {
+      throw new Error("rootREADME requires a regular root README.md file.");
+    }
+
+    readmePagePath = "repository-readme";
+    let suffix = 2;
+    while (pages[readmePagePath]) {
+      readmePagePath = `repository-readme-${suffix}`;
+      suffix += 1;
+    }
+
+    const source = await readFile(readmeFile, "utf8");
+    const history = await readRepositoryFileHistory(repositoryDirectory, "README.md");
+    const preparedSource = prepareMarkdown(source);
+    const headings: Heading[] = [];
+    const rootPagePaths = new Map(pagePaths);
+    for (const [file, pagePath] of pagePaths) rootPagePaths.set(path.posix.join("docs", file), pagePath);
+    configureMarkdown(markdown, "README.md", repository.slug, routeBase, rootPagePaths, headings);
+    pages[readmePagePath] = {
+      path: readmePagePath,
+      sourcePath: "README.md",
+      title: pageTitle(source, "README.md"),
+      description: pageDescription(preparedSource),
+      html: markdown.render(preparedSource),
+      headings: headings.filter((heading) => heading.level === 2 || heading.level === 3),
+      history,
+    };
+  }
+
   let navigation: NavItem[];
   const candidates = [
     path.join(repositoryDirectory, ".nav.yml"),
@@ -460,7 +510,7 @@ export async function buildDocumentation(
     });
   }
 
-  const defaultPage = pages[""] ? "" : firstPage(navigation);
+  const defaultPage = readmePagePath ?? (pages[""] ? "" : firstPage(navigation));
   if (defaultPage === null) throw new Error("The navigation does not contain a page.");
 
   return {

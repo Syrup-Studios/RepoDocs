@@ -127,9 +127,12 @@ A source repository can classify its documentation in `docs/repodocs.yml`:
 ```yaml
 type: minecraft
 category: mod
+rootREADME: true
 ```
 
 Both values must use lowercase letters, numbers, or hyphens. A Minecraft project must use `mod` or `modpack` as its category.
+
+Set the optional `rootREADME` value to `true` to use the repository's root `README.md` as the project landing page. The default value is `false`. When this value is enabled, the repository must contain a committed root `README.md` file. Documentation pages and their routes stay unchanged.
 
 Classification controls the directory and project routes:
 

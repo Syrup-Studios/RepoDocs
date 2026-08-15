@@ -97,7 +97,7 @@ The deployed website has no server process, API routes, database, or runtime Git
 
 The workflow in `.github/workflows/deploy-pages.yml` builds and deploys the site after each push to `main`. It also supports a manual run from the Actions page.
 
-In the GitHub repository settings, open **Pages** and set **Source** to **GitHub Actions**. The workflow reads the Pages base path, so links work on project sites and custom domains.
+In the GitHub repository settings, open **Pages** and set **Source** to **GitHub Actions**. The site uses root-relative links and is intended to run from its configured custom domain.
 
 ## Navigation
 

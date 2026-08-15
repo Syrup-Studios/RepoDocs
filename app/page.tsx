@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { GameDirectoryPage } from "@/components/game-directory-page";
 import { categorySegment, projectPageHref } from "@/lib/routes";
-import { withBasePath } from "@/lib/base-path";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedProject, GeneratedDocumentation } from "@/lib/types";
 
@@ -95,7 +94,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
     return (
       <div className="docs-shell home-docs-shell">
         <header className="docs-header">
-          <a className="material-brand" href={withBasePath("/")}><span className="material-logo"><BookOpen size={19} /></span><span>{site.name}</span></a>
+          <a className="material-brand" href="/"><span className="material-logo"><BookOpen size={19} /></span><span>{site.name}</span></a>
           <div className="docs-actions">
             <div className="docs-search" aria-label="Search is not available yet"><Search size={17} /><span>Search</span></div>
             <a className="header-repository" href={site.repository} target="_blank" rel="noreferrer"><Github size={20} /><span>{new URL(site.repository).pathname.replace(/^\//, "")}</span></a>
@@ -103,8 +102,8 @@ export default function HomePage({ documentation, selection, site }: { documenta
         </header>
 
         <nav className="docs-tabs" aria-label="Main sections">
-          <a className={showsHowItWorks ? "" : "active"} href={withBasePath("/")}>Home</a>
-          <a className={showsHowItWorks ? "active" : ""} href={withBasePath("/how-it-works/")}>Documentation</a>
+          <a className={showsHowItWorks ? "" : "active"} href="/">Home</a>
+          <a className={showsHowItWorks ? "active" : ""} href="/how-it-works/">Documentation</a>
         </nav>
 
         <aside className="docs-sidebar">
@@ -112,9 +111,9 @@ export default function HomePage({ documentation, selection, site }: { documenta
           {!showsHowItWorks && (
             <nav className="docs-nav" aria-label="Games">
               {documentationTypes.map((type) => (
-                <a href={withBasePath(type === "minecraft" ? "/modpacks/" : `/${type}/`)} key={type}>{label(type)}</a>
+                <a href={type === "minecraft" ? "/modpacks/" : `/${type}/`} key={type}>{label(type)}</a>
               ))}
-              {generalProjects.length > 0 && <a href={withBasePath("/projects/")}>General</a>}
+              {generalProjects.length > 0 && <a href="/projects/">General</a>}
             </nav>
           )}
         </aside>
@@ -141,7 +140,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
                   {documentationTypes.map((type) => {
                     const count = projects.filter((project) => project.documentationType === type).length;
                     return (
-                      <a href={withBasePath(type === "minecraft" ? "/modpacks/" : `/${type}/`)} key={type}>
+                      <a href={type === "minecraft" ? "/modpacks/" : `/${type}/`} key={type}>
                         <span><b>{label(type)}</b><small>{type === "minecraft" ? "Mods and modpacks" : `${label(type)} projects`}</small></span>
                         <small>{count} project{count === 1 ? "" : "s"}</small>
                         <ArrowRight size={16} />
@@ -149,7 +148,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
                     );
                   })}
                   {generalProjects.length > 0 && (
-                    <a href={withBasePath("/projects/")}>
+                    <a href="/projects/">
                       <span><b>General</b><small>Libraries and developer tools</small></span>
                       <small>{generalProjects.length} project{generalProjects.length === 1 ? "" : "s"}</small>
                       <ArrowRight size={16} />
@@ -178,8 +177,8 @@ export default function HomePage({ documentation, selection, site }: { documenta
   return (
     <div className="portal-shell">
       <header className="material-header portal-header">
-        <a className="material-brand" href={withBasePath("/")}><span className="material-logo"><BookOpen size={21} /></span><span>{site.name}</span></a>
-        <nav aria-label="Main navigation"><a className="active" href={withBasePath("/#projects")}>Projects</a><a href={withBasePath("/#how-it-works")}>How it works</a></nav>
+        <a className="material-brand" href="/"><span className="material-logo"><BookOpen size={21} /></span><span>{site.name}</span></a>
+        <nav aria-label="Main navigation"><a className="active" href="/#projects">Projects</a><a href="/#how-it-works">How it works</a></nav>
         <a className="header-repository" href={site.repository} target="_blank" rel="noreferrer"><Github size={19} /><span>Source</span></a>
       </header>
 
@@ -197,10 +196,10 @@ export default function HomePage({ documentation, selection, site }: { documenta
 
           {selectedType && (
             <nav className="project-tabs" aria-label={`${label(selectedType)} categories`}>
-              <a className={!selection.category ? "active" : ""} href={withBasePath(`/${selectedType}/`)}>All<span>{typeProjects.length}</span></a>
+              <a className={!selection.category ? "active" : ""} href={`/${selectedType}/`}>All<span>{typeProjects.length}</span></a>
               {categoryNames.map((category) => {
                 const count = typeProjects.filter((project) => project.category === category).length;
-                return <a className={selection.category === category ? "active" : ""} href={withBasePath(`/${selectedType}/${categorySegment(category)}/`)} key={category}>{label(category)}<span>{count}</span></a>;
+                return <a className={selection.category === category ? "active" : ""} href={`/${selectedType}/${categorySegment(category)}/`} key={category}>{label(category)}<span>{count}</span></a>;
               })}
             </nav>
           )}

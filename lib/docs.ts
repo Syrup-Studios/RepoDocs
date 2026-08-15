@@ -4,7 +4,6 @@ import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import { parse as parseYaml } from "yaml";
 import type { CachedPage, CachedProject, NavItem } from "@/lib/types";
-import { withBasePath } from "@/lib/base-path";
 import type { RepositoryDetails } from "@/lib/repository";
 import { projectBasePath } from "@/lib/routes";
 
@@ -202,9 +201,9 @@ function configureMarkdown(
         );
         const pagePath = pagePaths.get(resolved);
         if (pagePath !== undefined) {
-          token.attrs![hrefIndex][1] = withBasePath(`${routeBase}${pagePath ? `/${pagePath}` : ""}/${hash ? `#${hash}` : ""}`);
+          token.attrs![hrefIndex][1] = `${routeBase}${pagePath ? `/${pagePath}` : ""}/${hash ? `#${hash}` : ""}`;
         } else if (!resolved.startsWith("../")) {
-          token.attrs![hrefIndex][1] = withBasePath(`/repository-assets/${projectSlug}/${resolved}${hash ? `#${hash}` : ""}`);
+          token.attrs![hrefIndex][1] = `/repository-assets/${projectSlug}/${resolved}${hash ? `#${hash}` : ""}`;
         }
       } else if (/^https?:\/\//i.test(href)) {
         token.attrSet("target", "_blank");
@@ -224,7 +223,7 @@ function configureMarkdown(
           path.posix.join(path.posix.dirname(currentFile), decodeURIComponent(source)),
         );
         if (!resolved.startsWith("../")) {
-          token.attrs![sourceIndex][1] = withBasePath(`/repository-assets/${projectSlug}/${resolved}`);
+          token.attrs![sourceIndex][1] = `/repository-assets/${projectSlug}/${resolved}`;
         }
       }
     }

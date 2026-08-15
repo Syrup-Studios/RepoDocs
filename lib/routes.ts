@@ -1,5 +1,3 @@
-import { withBasePath } from "@/lib/base-path";
-
 type ClassifiedProject = {
   slug: string;
   documentationType: string | null;
@@ -18,5 +16,5 @@ export function projectBasePath(project: ClassifiedProject): string {
 }
 
 export function projectPageHref(project: ClassifiedProject, pagePath: string): string {
-  return withBasePath(`${projectBasePath(project)}${pagePath ? `/${pagePath}` : ""}/`);
+  return `${projectBasePath(project)}${pagePath ? `/${pagePath}` : ""}/`;
 }

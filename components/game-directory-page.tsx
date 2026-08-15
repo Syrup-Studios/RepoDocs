@@ -1,7 +1,6 @@
 import { BookOpen, ChevronRight, Github, Search } from "lucide-react";
 import { DocsNav } from "@/components/docs-nav";
 import { projectBasePath, projectPageHref } from "@/lib/routes";
-import { withBasePath } from "@/lib/base-path";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedProject } from "@/lib/types";
 
@@ -43,7 +42,7 @@ export function GameDirectoryPage({
   return (
     <div className="game-directory-shell">
       <header className="docs-header game-header">
-        <a className="material-brand" href={withBasePath("/")}><span className="material-logo"><BookOpen size={19} /></span><span>{site.name}</span></a>
+        <a className="material-brand" href="/"><span className="material-logo"><BookOpen size={19} /></span><span>{site.name}</span></a>
         <span className="game-header-title">{game}</span>
         <div className="docs-actions">
           <div className="docs-search" aria-label="Search is not available yet"><Search size={17} /><span>Search</span></div>
@@ -53,7 +52,7 @@ export function GameDirectoryPage({
 
       <nav className="docs-tabs game-tabs" aria-label={`${game} categories`}>
         {categories.map((category) => (
-          <a className={effectiveCategory === category.name ? "active" : ""} href={withBasePath(category.href)} key={category.name}>
+          <a className={effectiveCategory === category.name ? "active" : ""} href={category.href} key={category.name}>
             {category.label}
           </a>
         ))}

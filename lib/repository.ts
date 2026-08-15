@@ -19,6 +19,12 @@ export type RepositoryDetails = {
   slug: string;
 };
 
+export type RepositoryFileHistory = {
+  createdAt: string;
+  updatedAt: string;
+  authors: string[];
+};
+
 export function parseRepositoryUrl(input: string): RepositoryDetails {
   let url: URL;
   try {
@@ -118,14 +124,16 @@ export async function syncRepository(
 
   if (await exists(path.join(directory, ".git"))) {
     await runGit(["remote", "set-url", "origin", repository.normalizedUrl], directory);
-    await runGit(["fetch", "--depth=1", "origin"], directory);
+    const isShallow = await runGit(["rev-parse", "--is-shallow-repository"], directory);
+    await runGit(isShallow === "true"
+      ? ["fetch", "--unshallow", "--no-tags", "origin"]
+      : ["fetch", "--no-tags", "origin"], directory);
     await runGit(["reset", "--hard", "FETCH_HEAD"], directory);
     await runGit(["clean", "-fdx"], directory);
   } else {
     await rm(directory, { recursive: true, force: true });
     await runGit([
       "clone",
-      "--depth=1",
       "--single-branch",
       "--no-tags",
       "--",
@@ -136,4 +144,42 @@ export async function syncRepository(
 
   const revision = await runGit(["rev-parse", "HEAD"], directory);
   return { directory, revision };
+}
+
+export async function readRepositoryFileHistory(
+  repositoryDirectory: string,
+  relativeFile: string,
+): Promise<RepositoryFileHistory> {
+  const output = await runGit([
+    "log",
+    "--follow",
+    "--format=%aI%x1f%an%x1f%ae%x1e",
+    "--",
+    relativeFile,
+  ], repositoryDirectory);
+  const commits = output
+    .split("\x1e")
+    .map((record) => record.trim())
+    .filter(Boolean)
+    .map((record) => {
+      const [date, name, email] = record.split("\x1f");
+      return { date, name, email };
+    })
+    .filter((commit) => commit.date && commit.name);
+
+  if (commits.length === 0) {
+    throw new Error(`Git history is missing for ${relativeFile}.`);
+  }
+
+  const authors = new Map<string, string>();
+  for (const commit of commits) {
+    const identity = commit.email?.toLowerCase() || commit.name.toLowerCase();
+    if (!authors.has(identity)) authors.set(identity, commit.name);
+  }
+
+  return {
+    updatedAt: commits[0].date,
+    createdAt: commits[commits.length - 1].date,
+    authors: [...new Set(authors.values())],
+  };
 }

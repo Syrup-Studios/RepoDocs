@@ -1,4 +1,4 @@
-import { BookOpen, ChevronRight, Github, Search } from "lucide-react";
+import { BookOpen, CalendarPlus, ChevronRight, Github, History, Search, UserRound } from "lucide-react";
 import { DocsNav } from "@/components/docs-nav";
 import { projectBasePath, projectPageHref } from "@/lib/routes";
 import type { SiteConfig } from "@/lib/config";
@@ -24,6 +24,33 @@ function projectNavigation(project: CachedProject): NavItem[] {
     ? root.children
     : project.navigation;
   return items.filter((item) => item.type !== "page" || item.path !== project.defaultPage);
+}
+
+function relativeDate(value: string, reference: string): string {
+  const elapsedSeconds = (new Date(value).getTime() - new Date(reference).getTime()) / 1000;
+  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
+    ["year", 365 * 24 * 60 * 60],
+    ["month", 30 * 24 * 60 * 60],
+    ["week", 7 * 24 * 60 * 60],
+    ["day", 24 * 60 * 60],
+    ["hour", 60 * 60],
+    ["minute", 60],
+  ];
+  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "always" });
+  for (const [unit, seconds] of units) {
+    if (Math.abs(elapsedSeconds) >= seconds) {
+      return formatter.format(Math.round(elapsedSeconds / seconds), unit);
+    }
+  }
+  return "just now";
+}
+
+function absoluteDate(value: string): string {
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(new Date(value));
 }
 
 export function DocumentationPage({
@@ -112,8 +139,24 @@ export function DocumentationPage({
           <div dangerouslySetInnerHTML={{ __html: page.html }} />
         </article>
         <footer className="page-footer">
-          <span>Source: <code>docs/{page.sourcePath}</code></span>
-          <span>Commit {project.sourceRevision.slice(0, 7)}</span>
+          <div className="page-history" aria-label="Document history">
+            <span title={`Last edited ${absoluteDate(page.history.updatedAt)} UTC`}>
+              <History size={17} aria-hidden="true" />
+              {relativeDate(page.history.updatedAt, project.builtAt)}
+            </span>
+            <span title={`Created ${absoluteDate(page.history.createdAt)} UTC`}>
+              <CalendarPlus size={17} aria-hidden="true" />
+              {relativeDate(page.history.createdAt, project.builtAt)}
+            </span>
+            <span title={`Authors: ${page.history.authors.join(", ")}`}>
+              <UserRound size={17} aria-hidden="true" />
+              {page.history.authors.join(", ")}
+            </span>
+          </div>
+          <div className="page-source">
+            <span>Source: <code>docs/{page.sourcePath}</code></span>
+            <span>Commit {project.sourceRevision.slice(0, 7)}</span>
+          </div>
         </footer>
       </main>
 

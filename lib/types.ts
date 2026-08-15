@@ -9,6 +9,11 @@ export type CachedPage = {
   description: string;
   html: string;
   headings: Array<{ id: string; text: string; level: number }>;
+  history: {
+    createdAt: string;
+    updatedAt: string;
+    authors: string[];
+  };
 };
 
 export type CachedProject = {

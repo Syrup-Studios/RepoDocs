@@ -4,7 +4,7 @@ import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import { parse as parseYaml } from "yaml";
 import type { CachedPage, CachedProject, NavItem } from "@/lib/types";
-import type { RepositoryDetails } from "@/lib/repository";
+import { readRepositoryFileHistory, type RepositoryDetails } from "@/lib/repository";
 import { projectBasePath } from "@/lib/routes";
 
 const markdown = new MarkdownIt({
@@ -452,6 +452,7 @@ export async function buildDocumentation(
   const pages: Record<string, CachedPage> = {};
   for (const file of files) {
     const source = await readFile(path.join(docsDirectory, file), "utf8");
+    const history = await readRepositoryFileHistory(repositoryDirectory, path.posix.join("docs", file));
     const preparedSource = prepareMarkdown(source);
     const title = pageTitle(source, file);
     const headings: Heading[] = [];
@@ -465,6 +466,7 @@ export async function buildDocumentation(
       description: pageDescription(preparedSource),
       html: markdown.render(preparedSource),
       headings: headings.filter((heading) => heading.level === 2 || heading.level === 3),
+      history,
     };
   }
 

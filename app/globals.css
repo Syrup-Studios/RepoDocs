@@ -155,8 +155,13 @@ button, input { font: inherit; }
 .page-toc a { min-height: 31px; padding: 5px 0; color: #9197a1; font-size: 14px; line-height: 1.6; }
 .page-toc a:hover { color: var(--accent); }
 .page-toc a.nested { padding-left: 12px; }
-.page-footer { display: flex; justify-content: space-between; gap: 22px; margin-top: 64px; padding-top: 20px; color: #737a86; border-top: 1px solid var(--line); font-size: 11px; }
+.page-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 18px 28px; margin-top: 64px; padding-top: 20px; color: #737a86; border-top: 1px solid var(--line); font-size: 11px; }
 .page-footer code { font-family: var(--font-mono); }
+.page-history, .page-source { display: flex; align-items: center; flex-wrap: wrap; }
+.page-history { gap: 18px; color: #9096a0; font-size: 13px; }
+.page-history > span { display: flex; align-items: center; gap: 7px; }
+.page-history svg { flex: 0 0 auto; color: #858c98; }
+.page-source { gap: 18px; margin-left: auto; }
 .home-game-list { max-width: 660px; margin: 8px 0 40px; border-top: 1px solid var(--line); }
 .home-game-list > a { min-height: 72px; display: grid; grid-template-columns: minmax(0, 1fr) auto 18px; align-items: center; gap: 16px; padding: 12px 4px; color: #cdd0d6; border-bottom: 1px solid var(--line); text-decoration: none; }
 .home-game-list > a:hover { color: white; background: rgb(255 255 255 / 2%); }
@@ -244,5 +249,6 @@ button, input { font: inherit; }
   .docs-main { width: 100%; padding: 42px 22px 40px; }
   .game-directory-main { width: 100%; padding: 42px 22px 40px; }
   .markdown-body h1 { font-size: 29px; }
-  .page-footer { flex-direction: column; }
+  .page-footer { align-items: flex-start; flex-direction: column; }
+  .page-source { margin-left: 0; }
 }

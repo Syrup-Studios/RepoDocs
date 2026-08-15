@@ -2,18 +2,23 @@ export type NavItem =
   | { type: "page"; title: string; path: string }
   | { type: "section"; title: string; children: NavItem[] };
 
-export type CachedPage = {
+export type DocumentHistory = {
+  createdAt: string;
+  updatedAt: string;
+  authors: string[];
+};
+
+export type RenderedDocumentation = {
+  html: string;
+  headings: Array<{ id: string; text: string; level: number }>;
+  history: DocumentHistory;
+};
+
+export type CachedPage = RenderedDocumentation & {
   path: string;
   sourcePath: string;
   title: string;
   description: string;
-  html: string;
-  headings: Array<{ id: string; text: string; level: number }>;
-  history: {
-    createdAt: string;
-    updatedAt: string;
-    authors: string[];
-  };
 };
 
 export type CachedProject = {
@@ -32,5 +37,8 @@ export type CachedProject = {
 
 export type GeneratedDocumentation = {
   generatedAt: string;
+  siteDocumentation: RenderedDocumentation & {
+    sourceRevision: string;
+  };
   projects: CachedProject[];
 };

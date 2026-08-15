@@ -25,7 +25,7 @@ function categoryFromSegment(segment: string): string {
 
 function directorySelection(parts: string[]): DirectorySelection | null {
   if (parts.length === 0) return { type: null, category: null };
-  if (parts.length === 1 && parts[0] === "how-it-works") return { type: null, category: null, infoPage: "how-it-works" };
+  if (parts.length === 1 && parts[0] === "docs") return { type: null, category: null, infoPage: "docs" };
   if (parts.length === 1 && parts[0] === "projects") return { type: null, category: null, general: true };
   if (parts.length === 1 && (parts[0] === "mods" || parts[0] === "modpacks")) {
     return { type: "minecraft", category: categoryFromSegment(parts[0]) };
@@ -72,7 +72,7 @@ export function resolvePage(pathname: string) {
 export function pageMetadata(pathname: string): { title: string; description: string } {
   const resolved = resolvePage(pathname);
   if (resolved.type === "home") {
-    if (resolved.selection.infoPage === "how-it-works") {
+    if (resolved.selection.infoPage === "docs") {
       return {
         title: `How it works · ${config.site.name}`,
         description: `How ${config.site.name} builds static documentation from project repositories.`,
@@ -107,7 +107,7 @@ export function App({ pathname }: { pathname: string }) {
 export function staticPaths(): string[] {
   return [
     "/",
-    "/how-it-works/",
+    "/docs/",
     "/projects/",
     "/mods/",
     "/modpacks/",

@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { BookOpen, CalendarPlus, ChevronRight, Github, History, UserRound } from "lucide-react";
+import { BookOpen, ChevronRight, Github } from "lucide-react";
+import { DocumentationContent } from "@/components/documentation-content";
 import { DocsNav } from "@/components/docs-nav";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { projectBasePath, projectPageHref } from "@/lib/routes";
@@ -26,46 +26,6 @@ function projectNavigation(project: CachedProject): NavItem[] {
     ? root.children
     : project.navigation;
   return items.filter((item) => item.type !== "page" || item.path !== project.defaultPage);
-}
-
-function relativeDate(value: string, reference: string): string {
-  const elapsedSeconds = (new Date(value).getTime() - new Date(reference).getTime()) / 1000;
-  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
-    ["year", 365 * 24 * 60 * 60],
-    ["month", 30 * 24 * 60 * 60],
-    ["week", 7 * 24 * 60 * 60],
-    ["day", 24 * 60 * 60],
-    ["hour", 60 * 60],
-    ["minute", 60],
-  ];
-  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "always" });
-  for (const [unit, seconds] of units) {
-    if (Math.abs(elapsedSeconds) >= seconds) {
-      return formatter.format(Math.round(elapsedSeconds / seconds), unit);
-    }
-  }
-  return "just now";
-}
-
-function localDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  }).format(new Date(value));
-}
-
-function LocalDateTitle({ label, value, children }: { label: string; value: string; children: ReactNode }) {
-  const [title, setTitle] = useState(`${label} ${new Date(value).toISOString()}`);
-
-  useEffect(() => {
-    setTitle(`${label} ${localDate(value)}`);
-  }, [label, value]);
-
-  return <span title={title}>{children}</span>;
 }
 
 export function DocumentationPage({
@@ -149,38 +109,12 @@ export function DocumentationPage({
         )}
       </aside>
 
-      <main className="docs-main">
-        <article className="markdown-body">
-          <div dangerouslySetInnerHTML={{ __html: page.html }} />
-        </article>
-        <footer className="page-footer">
-          <div className="page-history" aria-label="Document history">
-            <LocalDateTitle label="Last edited" value={page.history.updatedAt}>
-              <History size={17} aria-hidden="true" />
-              {relativeDate(page.history.updatedAt, project.builtAt)}
-            </LocalDateTitle>
-            <LocalDateTitle label="Created" value={page.history.createdAt}>
-              <CalendarPlus size={17} aria-hidden="true" />
-              {relativeDate(page.history.createdAt, project.builtAt)}
-            </LocalDateTitle>
-            <span title={`Authors: ${page.history.authors.join(", ")}`}>
-              <UserRound size={17} aria-hidden="true" />
-              {page.history.authors.join(", ")}
-            </span>
-          </div>
-          <div className="page-source">
-            <span>Source: <code>docs/{page.sourcePath}</code></span>
-            <span>Commit {project.sourceRevision.slice(0, 7)}</span>
-          </div>
-        </footer>
-      </main>
-
-      {page.headings.length > 0 && (
-        <aside className="page-toc">
-          <b>Table of contents</b>
-          {page.headings.map((heading) => <a className={heading.level === 3 ? "nested" : ""} href={`#${heading.id}`} key={heading.id}>{heading.text}</a>)}
-        </aside>
-      )}
+      <DocumentationContent
+        page={page}
+        referenceDate={project.builtAt}
+        sourcePath={`docs/${page.sourcePath}`}
+        sourceRevision={project.sourceRevision}
+      />
     </div>
   );
 }

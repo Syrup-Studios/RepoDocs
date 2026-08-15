@@ -7,6 +7,7 @@ import {
   Github,
 } from "lucide-react";
 import { GameDirectoryPage } from "@/components/game-directory-page";
+import { DocumentationContent } from "@/components/documentation-content";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { categorySegment, projectPageHref } from "@/lib/routes";
 import type { SiteConfig } from "@/lib/config";
@@ -16,7 +17,7 @@ export type DirectorySelection = {
   type: string | null;
   category: string | null;
   general?: boolean;
-  infoPage?: "how-it-works";
+  infoPage?: "docs";
 };
 
 function label(value: string): string {
@@ -52,7 +53,7 @@ function projectCard(project: CachedProject) {
 }
 
 export default function HomePage({ documentation, selection, site }: { documentation: GeneratedDocumentation; selection: DirectorySelection; site: SiteConfig }) {
-  const { projects, generatedAt } = documentation;
+  const { projects, generatedAt, siteDocumentation: docsPage } = documentation;
   const configuredTypes = [...new Set(projects.flatMap((project) => project.documentationType ? [project.documentationType] : []))];
   const documentationTypes = [...new Set(["minecraft", ...configuredTypes])];
   const generalProjects = projects.filter((project) => !project.documentationType || !project.category);
@@ -91,7 +92,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
   }
 
   if (!selectedType && !selection.general) {
-    const showsHowItWorks = selection.infoPage === "how-it-works";
+    const showsHowItWorks = selection.infoPage === "docs";
     return (
       <div className="docs-shell home-docs-shell">
         <header className="docs-header">
@@ -104,7 +105,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
 
         <nav className="docs-tabs" aria-label="Main sections">
           <a className={showsHowItWorks ? "" : "active"} href="/">Home</a>
-          <a className={showsHowItWorks ? "active" : ""} href="/how-it-works/">Documentation</a>
+          <a className={showsHowItWorks ? "active" : ""} href="/docs/">Documentation</a>
         </nav>
 
         <aside className="docs-sidebar">
@@ -119,21 +120,17 @@ export default function HomePage({ documentation, selection, site }: { documenta
           )}
         </aside>
 
-        <main className="docs-main">
-          <article className="markdown-body">
-            {showsHowItWorks ? (
-              <>
-                <h1>How it works</h1>
-                <p>{site.name} builds a static documentation site from files stored in a project repository.</p>
-                <h2 id="add-a-repository">Add a repository</h2>
-                <p>Add the public repository URL, project name, and stable slug to the {site.name} configuration.</p>
-                <h2 id="write-documentation">Write documentation</h2>
-                <p>Put Markdown files in the repository&apos;s <code>docs/</code> directory. Use <code>.nav.yml</code> files to control navigation.</p>
-                <h2 id="build-the-site">Build the site</h2>
-                <p>{site.name} pulls the repository and creates static pages for every document.</p>
-              </>
-            ) : (
-              <>
+        {showsHowItWorks ? (
+          <DocumentationContent
+            page={docsPage}
+            referenceDate={generatedAt}
+            sourcePath="docs/index.md"
+            sourceRevision={docsPage.sourceRevision}
+          />
+        ) : (
+          <>
+            <main className="docs-main">
+              <article className="markdown-body">
                 <h1>{site.name}</h1>
                 <p>{site.description}</p>
                 <h2 id="choose-a-game">Choose a game</h2>
@@ -156,21 +153,14 @@ export default function HomePage({ documentation, selection, site }: { documenta
                     </a>
                   )}
                 </div>
-              </>
-            )}
-          </article>
-        </main>
-
-        <aside className="page-toc">
-          <b>Table of contents</b>
-          {showsHowItWorks ? (
-            <>
-              <a href="#add-a-repository">Add a repository</a>
-              <a href="#write-documentation">Write documentation</a>
-              <a href="#build-the-site">Build the site</a>
-            </>
-          ) : <a href="#choose-a-game">Choose a game</a>}
-        </aside>
+              </article>
+            </main>
+            <aside className="page-toc">
+              <b>Table of contents</b>
+              <a href="#choose-a-game">Choose a game</a>
+            </aside>
+          </>
+        )}
       </div>
     );
   }

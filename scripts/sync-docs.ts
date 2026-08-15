@@ -1,9 +1,12 @@
-import { copyFile, mkdir, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { buildDocumentation, MissingDocumentationError } from "@/lib/docs";
-import { parseRepositoryUrl, syncRepository } from "@/lib/repository";
+import { renderMarkdown } from "@/lib/markdown";
+import { parseRepositoryUrl, readRepositoryDefaultAuthor, readRepositoryFileHistory, readRepositoryRevision, syncRepository } from "@/lib/repository";
 import { loadRepositorySources } from "@/lib/repository-configs";
 import type { CachedProject } from "@/lib/types";
+
+const siteDocumentationPath = path.join("docs", "index.md");
 
 const generatedDirectory = path.join(process.cwd(), "generated");
 const assetsDirectory = path.join(process.cwd(), "public", "repository-assets");
@@ -89,7 +92,24 @@ async function main(): Promise<void> {
 
   const projects = synchronizedProjects.filter((project): project is CachedProject => project !== null);
 
-  const output = { generatedAt: new Date().toISOString(), projects };
+  const siteDocumentationFile = path.join(process.cwd(), siteDocumentationPath);
+  let siteDocumentationHistory;
+  try {
+    siteDocumentationHistory = await readRepositoryFileHistory(process.cwd(), siteDocumentationPath);
+  } catch {
+    const fileStats = await stat(siteDocumentationFile);
+    siteDocumentationHistory = {
+      createdAt: (fileStats.birthtimeMs > 0 ? fileStats.birthtime : fileStats.mtime).toISOString(),
+      updatedAt: fileStats.mtime.toISOString(),
+      authors: [await readRepositoryDefaultAuthor(process.cwd())],
+    };
+  }
+  const siteDocumentation = {
+    ...renderMarkdown(await readFile(siteDocumentationFile, "utf8")),
+    history: siteDocumentationHistory,
+    sourceRevision: await readRepositoryRevision(process.cwd()),
+  };
+  const output = { generatedAt: new Date().toISOString(), siteDocumentation, projects };
   await mkdir(generatedDirectory, { recursive: true });
   const destination = path.join(generatedDirectory, "docs.json");
   const temporary = `${destination}.${process.pid}.tmp`;

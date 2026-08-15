@@ -183,3 +183,24 @@ export async function readRepositoryFileHistory(
     authors: [...new Set(authors.values())],
   };
 }
+
+export async function readRepositoryRevision(repositoryDirectory: string): Promise<string> {
+  return runGit(["rev-parse", "HEAD"], repositoryDirectory);
+}
+
+export async function readRepositoryDefaultAuthor(repositoryDirectory: string): Promise<string> {
+  try {
+    const configured = await runGit(["config", "--get", "user.name"], repositoryDirectory);
+    if (configured) return configured;
+  } catch {
+    // Use the latest commit author when no local Git author is configured.
+  }
+
+  try {
+    const latest = await runGit(["log", "-1", "--format=%an"], repositoryDirectory);
+    if (latest) return latest;
+  } catch {
+    // Use a stable label when the repository does not contain a commit.
+  }
+  return "Repository maintainer";
+}

@@ -91,6 +91,14 @@ The command performs these steps:
 6. Build the browser assets with Vite.
 7. Prerender every route to static HTML in `dist/`.
 
+RepoDocs syncs up to four repositories in parallel. Set `REPODOCS_SYNC_CONCURRENCY` to a value from `1` to `16` to change this limit:
+
+```bash
+REPODOCS_SYNC_CONCURRENCY=8 bun run build
+```
+
+Use a lower value if the build machine has limited memory or if a Git host rate-limits requests.
+
 The deployed website has no server process, API routes, database, or runtime Git access. Every route contains prerendered HTML. A small browser bundle provides navigation without full-page reloads. To publish repository changes, run and deploy a new build. A CI service can run this command after a push or on a schedule.
 
 Each documentation page includes its creation date, last edit date, and authors. RepoDocs reads this metadata from the Markdown file's Git history during the build.

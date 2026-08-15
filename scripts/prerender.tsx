@@ -29,11 +29,12 @@ async function writeRoute(pathname: string): Promise<void> {
   await writeFile(path.join(directory, "index.html"), render(pathname), "utf8");
 }
 
-for (const pathname of staticPaths()) await writeRoute(pathname);
+const paths = staticPaths();
+await Promise.all(paths.map((pathname) => writeRoute(pathname)));
 
 const notFound = render("/404/");
 await writeFile(path.join(outputDirectory, "404.html"), notFound, "utf8");
 await mkdir(path.join(outputDirectory, "404"), { recursive: true });
 await writeFile(path.join(outputDirectory, "404", "index.html"), notFound, "utf8");
 
-process.stdout.write(`Prerendered ${staticPaths().length} static routes.\n`);
+process.stdout.write(`Prerendered ${paths.length} static routes.\n`);

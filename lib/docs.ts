@@ -7,21 +7,23 @@ import type { CachedPage, CachedProject, NavItem } from "@/lib/types";
 import { readRepositoryFileHistory, type RepositoryDetails } from "@/lib/repository";
 import { projectBasePath } from "@/lib/routes";
 
-const markdown = new MarkdownIt({
-  html: false,
-  linkify: true,
-  typographer: true,
-  highlight(code, language): string {
-    if (language && hljs.getLanguage(language)) {
-      return `<pre><code class="hljs language-${language}">${hljs.highlight(code, { language }).value}</code></pre>`;
-    }
-    return `<pre><code class="hljs">${code
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")}</code></pre>`;
-  },
-});
+function createMarkdown(): MarkdownIt {
+  return new MarkdownIt({
+    html: false,
+    linkify: true,
+    typographer: true,
+    highlight(code, language): string {
+      if (language && hljs.getLanguage(language)) {
+        return `<pre><code class="hljs language-${language}">${hljs.highlight(code, { language }).value}</code></pre>`;
+      }
+      return `<pre><code class="hljs">${code
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")}</code></pre>`;
+    },
+  });
+}
 
 type Heading = { id: string; text: string; level: number };
 
@@ -172,6 +174,7 @@ function prepareMarkdown(source: string): string {
 }
 
 function configureMarkdown(
+  markdown: MarkdownIt,
   currentFile: string,
   projectSlug: string,
   routeBase: string,
@@ -450,13 +453,14 @@ export async function buildDocumentation(
   }
   const titles = new Map<string, string>();
   const pages: Record<string, CachedPage> = {};
+  const markdown = createMarkdown();
   for (const file of files) {
     const source = await readFile(path.join(docsDirectory, file), "utf8");
     const history = await readRepositoryFileHistory(repositoryDirectory, path.posix.join("docs", file));
     const preparedSource = prepareMarkdown(source);
     const title = pageTitle(source, file);
     const headings: Heading[] = [];
-    configureMarkdown(file, repository.slug, routeBase, pagePaths, headings);
+    configureMarkdown(markdown, file, repository.slug, routeBase, pagePaths, headings);
     const pagePath = routePaths.get(file)!;
     titles.set(file, title);
     pages[pagePath] = {

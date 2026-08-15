@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.repodocs-cache/
+.repodocs-data/
+public/repository-assets/
+generated/docs.json
+.env*
+!.env.example
+npm-debug.log*
+yarn-error.log*
+*.tsbuildinfo

@@ -4,6 +4,7 @@ import { NotFound } from "@/components/not-found";
 import generatedData from "@/generated/docs.json";
 import config from "@/repodocs.config";
 import { categorySegment, projectPageHref } from "@/lib/routes";
+import { withoutBasePath } from "@/lib/base-path";
 import type { GeneratedDocumentation } from "@/lib/types";
 
 const documentation = generatedData as GeneratedDocumentation;
@@ -116,7 +117,7 @@ export function staticPaths(): string[] {
       ...knownCategories(type).map((category) => `/${type}/${categorySegment(category)}/`),
     ]),
     ...documentation.projects.flatMap((project) =>
-      Object.keys(project.pages).map((pagePath) => projectPageHref(project, pagePath)),
+      Object.keys(project.pages).map((pagePath) => withoutBasePath(projectPageHref(project, pagePath))),
     ),
   ];
 }

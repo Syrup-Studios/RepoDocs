@@ -8,4 +8,14 @@ generated/docs.json
 !.env.example
 npm-debug.log*
 yarn-error.log*
+*.log
 *.tsbuildinfo
+.vite/
+coverage/
+.eslintcache
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

@@ -1,8 +1,9 @@
 import { ChevronRight } from "lucide-react";
+import { withBasePath } from "@/lib/base-path";
 import type { NavItem } from "@/lib/types";
 
 function pageHref(basePath: string, path: string): string {
-  return `${basePath}${path ? `/${path}` : ""}/`;
+  return withBasePath(`${basePath}${path ? `/${path}` : ""}/`);
 }
 
 function containsPage(item: NavItem, currentPath: string): boolean {

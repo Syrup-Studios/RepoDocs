@@ -6,6 +6,7 @@ import "@fontsource/nunito/latin-700.css";
 import "highlight.js/styles/github-dark.css";
 import "@/app/globals.css";
 import { App, pageMetadata } from "@/src/app";
+import { withoutBasePath } from "@/lib/base-path";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("RepoDocs root element is missing.");
@@ -18,7 +19,7 @@ type ClientLocation = {
 
 function currentLocation(): ClientLocation {
   return {
-    pathname: window.location.pathname,
+    pathname: withoutBasePath(window.location.pathname),
     search: window.location.search,
     hash: window.location.hash,
   };

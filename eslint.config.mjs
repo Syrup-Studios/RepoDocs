@@ -3,7 +3,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist/**", ".repodocs-cache/**", ".repodocs-data/**", "generated/**", "public/repository-assets/**"] },
+  { ignores: ["dist/**", ".vite/**", ".repodocs-cache/**", ".repodocs-data/**", "generated/**", "public/repository-assets/**"] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {

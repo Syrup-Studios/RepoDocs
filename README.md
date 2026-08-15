@@ -93,6 +93,12 @@ The command performs these steps:
 
 The deployed website has no server process, API routes, database, or runtime Git access. Every route contains prerendered HTML. A small browser bundle provides navigation without full-page reloads. To publish repository changes, run and deploy a new build. A CI service can run this command after a push or on a schedule.
 
+## Deploy to GitHub Pages
+
+The workflow in `.github/workflows/deploy-pages.yml` builds and deploys the site after each push to `main`. It also supports a manual run from the Actions page.
+
+In the GitHub repository settings, open **Pages** and set **Source** to **GitHub Actions**. The workflow reads the Pages base path, so links work on project sites and custom domains.
+
 ## Navigation
 
 RepoDocs supports MkDocs-style navigation:

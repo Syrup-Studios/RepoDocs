@@ -1,6 +1,7 @@
 import { BookOpen, ChevronRight, Github, Search } from "lucide-react";
 import { DocsNav } from "@/components/docs-nav";
 import { projectBasePath, projectPageHref } from "@/lib/routes";
+import { withBasePath } from "@/lib/base-path";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedPage, CachedProject, NavItem } from "@/lib/types";
 
@@ -51,7 +52,7 @@ export function DocumentationPage({
   return (
     <div className="docs-shell">
       <header className="docs-header">
-        <a className="material-brand" href="/"><span className="material-logo"><BookOpen size={19} /></span><span>{isMinecraft ? site.name : project.name}</span></a>
+        <a className="material-brand" href={withBasePath("/")}><span className="material-logo"><BookOpen size={19} /></span><span>{isMinecraft ? site.name : project.name}</span></a>
         {isMinecraft && <span className="game-header-title">Minecraft</span>}
         <div className="docs-actions">
           <div className="docs-search" aria-label="Search is not available yet"><Search size={17} /><span>Search</span></div>
@@ -62,8 +63,8 @@ export function DocumentationPage({
       <nav className="docs-tabs" aria-label="Documentation sections">
         {isMinecraft ? (
           <>
-            <a className={project.category === "modpack" ? "active" : ""} href="/modpacks/">Modpacks</a>
-            <a className={project.category === "mod" ? "active" : ""} href="/mods/">Mods</a>
+            <a className={project.category === "modpack" ? "active" : ""} href={withBasePath("/modpacks/")}>Modpacks</a>
+            <a className={project.category === "mod" ? "active" : ""} href={withBasePath("/mods/")}>Mods</a>
           </>
         ) : project.navigation.map((item, index) => {
           const target = firstPage(item);

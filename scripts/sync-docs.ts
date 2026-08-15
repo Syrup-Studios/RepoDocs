@@ -1,6 +1,6 @@
 import { copyFile, mkdir, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { buildDocumentation } from "@/lib/docs";
+import { buildDocumentation, MissingDocumentationError } from "@/lib/docs";
 import { parseRepositoryUrl, syncRepository } from "@/lib/repository";
 import { loadRepositorySources } from "@/lib/repository-configs";
 import type { CachedProject } from "@/lib/types";
@@ -38,17 +38,28 @@ async function copyDocumentationAssets(source: string, destination: string): Pro
   }));
 }
 
-async function syncSource(source: Awaited<ReturnType<typeof loadRepositorySources>>[number]): Promise<CachedProject> {
+async function syncSource(
+  source: Awaited<ReturnType<typeof loadRepositorySources>>[number],
+): Promise<CachedProject | null> {
   process.stdout.write(`Syncing ${source.name}...\n`);
   const parsed = parseRepositoryUrl(source.repository);
   const repository = { ...parsed, slug: source.slug };
   const synced = await syncRepository(repository);
-  const project = await buildDocumentation(
-    repository,
-    synced.directory,
-    synced.revision,
-    source.name,
-  );
+  let project: CachedProject;
+  try {
+    project = await buildDocumentation(
+      repository,
+      synced.directory,
+      synced.revision,
+      source.name,
+    );
+  } catch (error) {
+    if (error instanceof MissingDocumentationError) {
+      process.stderr.write(`Skipped ${source.name}: ${error.message}\n`);
+      return null;
+    }
+    throw error;
+  }
   await copyDocumentationAssets(
     path.join(synced.directory, "docs"),
     path.join(assetsDirectory, source.slug),
@@ -63,7 +74,7 @@ async function main(): Promise<void> {
   await mkdir(assetsDirectory, { recursive: true });
 
   const concurrency = syncConcurrency(sources.length);
-  const projects = new Array<CachedProject>(sources.length);
+  const synchronizedProjects = new Array<CachedProject | null>(sources.length);
   let nextSource = 0;
 
   process.stdout.write(`Syncing ${sources.length} repositories with ${concurrency} worker${concurrency === 1 ? "" : "s"}.\n`);
@@ -71,10 +82,12 @@ async function main(): Promise<void> {
     while (nextSource < sources.length) {
       const index = nextSource;
       nextSource += 1;
-      projects[index] = await syncSource(sources[index]);
+      synchronizedProjects[index] = await syncSource(sources[index]);
     }
   }
   await Promise.all(Array.from({ length: concurrency }, () => worker()));
+
+  const projects = synchronizedProjects.filter((project): project is CachedProject => project !== null);
 
   const output = { generatedAt: new Date().toISOString(), projects };
   await mkdir(generatedDirectory, { recursive: true });
@@ -82,7 +95,9 @@ async function main(): Promise<void> {
   const temporary = `${destination}.${process.pid}.tmp`;
   await writeFile(temporary, JSON.stringify(output), "utf8");
   await rename(temporary, destination);
-  process.stdout.write(`Generated ${projects.length} static project${projects.length === 1 ? "" : "s"}.\n`);
+  process.stdout.write(
+    `Generated ${projects.length} static project${projects.length === 1 ? "" : "s"}; skipped ${sources.length - projects.length}.\n`,
+  );
 }
 
 await main();

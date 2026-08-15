@@ -39,6 +39,8 @@ The development and production builds scan every `.yml` file directly under `rep
 
 Each configured repository must contain a root `docs/` directory. RepoDocs reads `.nav.yml` or `docs/.nav.yml`. If neither file exists, it creates navigation from the Markdown file tree.
 
+Repositories without a valid root `docs/` directory, or without Markdown files in that directory, are skipped. Other errors still stop the build.
+
 ## Project type and category
 
 A repository can define its documentation type in `docs/repodocs.yml`:

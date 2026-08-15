@@ -32,6 +32,13 @@ type ProjectClassification = {
   category: string | null;
 };
 
+export class MissingDocumentationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MissingDocumentationError";
+  }
+}
+
 async function readProjectClassification(docsDirectory: string): Promise<ProjectClassification> {
   const configurationFile = path.join(docsDirectory, "repodocs.yml");
   let stats: Awaited<ReturnType<typeof lstat>>;
@@ -425,15 +432,23 @@ export async function buildDocumentation(
   displayName = repository.repository,
 ): Promise<CachedProject> {
   const docsDirectory = path.join(repositoryDirectory, "docs");
+  let docsStats: Awaited<ReturnType<typeof lstat>>;
   try {
-    const docsStats = await lstat(docsDirectory);
-    if (!docsStats.isDirectory() || docsStats.isSymbolicLink()) throw new Error();
-  } catch {
-    throw new Error("This repository does not have a root docs/ directory.");
+    docsStats = await lstat(docsDirectory);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new MissingDocumentationError("This repository does not have a root docs/ directory.");
+    }
+    throw error;
+  }
+  if (!docsStats.isDirectory() || docsStats.isSymbolicLink()) {
+    throw new MissingDocumentationError("This repository does not have a valid root docs/ directory.");
   }
 
   const files = await findMarkdownFiles(docsDirectory);
-  if (!files.length) throw new Error("The docs/ directory does not contain Markdown files.");
+  if (!files.length) {
+    throw new MissingDocumentationError("The docs/ directory does not contain Markdown files.");
+  }
   const classification = await readProjectClassification(docsDirectory);
   const root = contentRoot(files);
   const routeBase = projectBasePath({ slug: repository.slug, ...classification });

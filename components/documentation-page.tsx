@@ -1,3 +1,4 @@
+import { useEffect, useState, type ReactNode } from "react";
 import { BookOpen, CalendarPlus, ChevronRight, Github, History, Search, UserRound } from "lucide-react";
 import { DocsNav } from "@/components/docs-nav";
 import { projectBasePath, projectPageHref } from "@/lib/routes";
@@ -45,12 +46,25 @@ function relativeDate(value: string, reference: string): string {
   return "just now";
 }
 
-function absoluteDate(value: string): string {
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "UTC",
+function localDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
   }).format(new Date(value));
+}
+
+function LocalDateTitle({ label, value, children }: { label: string; value: string; children: ReactNode }) {
+  const [title, setTitle] = useState(`${label} ${new Date(value).toISOString()}`);
+
+  useEffect(() => {
+    setTitle(`${label} ${localDate(value)}`);
+  }, [label, value]);
+
+  return <span title={title}>{children}</span>;
 }
 
 export function DocumentationPage({
@@ -140,14 +154,14 @@ export function DocumentationPage({
         </article>
         <footer className="page-footer">
           <div className="page-history" aria-label="Document history">
-            <span title={`Last edited ${absoluteDate(page.history.updatedAt)} UTC`}>
+            <LocalDateTitle label="Last edited" value={page.history.updatedAt}>
               <History size={17} aria-hidden="true" />
               {relativeDate(page.history.updatedAt, project.builtAt)}
-            </span>
-            <span title={`Created ${absoluteDate(page.history.createdAt)} UTC`}>
+            </LocalDateTitle>
+            <LocalDateTitle label="Created" value={page.history.createdAt}>
               <CalendarPlus size={17} aria-hidden="true" />
               {relativeDate(page.history.createdAt, project.builtAt)}
-            </span>
+            </LocalDateTitle>
             <span title={`Authors: ${page.history.authors.join(", ")}`}>
               <UserRound size={17} aria-hidden="true" />
               {page.history.authors.join(", ")}

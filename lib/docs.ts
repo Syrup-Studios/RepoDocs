@@ -21,6 +21,7 @@ import type { CachedPage, CachedProject, DocumentHistory, NavItem, RepositoryFoo
 import { readRepositoryFileHistory, type RepositoryDetails } from "@/lib/repository";
 
 export type ProjectConfiguration = {
+  documentationFormat: "repodocs" | "moddedmc-v1" | "moddedmc-legacy";
   id: string;
   name: string;
   summary: string | null;
@@ -78,17 +79,95 @@ export class MissingDocumentationError extends Error {
   }
 }
 
+async function readModdedMcProjectConfiguration(
+  docsDirectory: string,
+  defaults: ProjectConfiguration,
+): Promise<ProjectConfiguration> {
+  const metadataFile = path.join(docsDirectory, "sinytra-wiki.json");
+  let stats: Awaited<ReturnType<typeof lstat>>;
+  try {
+    stats = await lstat(metadataFile);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return defaults;
+    throw new Error("RepoDocs could not read docs/sinytra-wiki.json.", { cause: error });
+  }
+  if (!stats.isFile() || stats.isSymbolicLink()) {
+    throw new Error("docs/sinytra-wiki.json must be a regular file.");
+  }
+
+  let parsed: Record<string, unknown>;
+  try {
+    const value = JSON.parse(await readFile(metadataFile, "utf8")) as unknown;
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error("Metadata must be a JSON object.");
+    }
+    parsed = value as Record<string, unknown>;
+  } catch (error) {
+    throw new Error("docs/sinytra-wiki.json must contain valid JSON metadata.", { cause: error });
+  }
+
+  if (parsed.schema !== undefined && parsed.schema !== "1") {
+    throw new Error('docs/sinytra-wiki.json schema must be omitted for the legacy format or use the string value "1".');
+  }
+  if (typeof parsed.id !== "string" || !validProjectId.test(parsed.id)) {
+    throw new Error("id in docs/sinytra-wiki.json must start with a lowercase letter and use only lowercase letters, numbers, or hyphens.");
+  }
+  if (parsed.id !== defaults.id) {
+    throw new Error(`Project ID "${parsed.id}" does not match the registered ID "${defaults.id}".`);
+  }
+
+  const rawPlatforms = parsed.platforms === undefined
+    ? parsed.platform && parsed.slug
+      ? { [String(parsed.platform)]: parsed.slug }
+      : undefined
+    : parsed.platforms;
+  if (!rawPlatforms || typeof rawPlatforms !== "object" || Array.isArray(rawPlatforms)) {
+    throw new Error("docs/sinytra-wiki.json must define at least one platform project.");
+  }
+  const platformValues: Record<string, { id: string }> = {};
+  for (const [platform, projectId] of Object.entries(rawPlatforms)) {
+    if (platform !== "modrinth" && platform !== "curseforge") continue;
+    if (typeof projectId !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(projectId)) {
+      throw new Error(`docs/sinytra-wiki.json platform "${platform}" must define a valid project ID.`);
+    }
+    platformValues[platform] = { id: projectId };
+  }
+  if (!platformValues.modrinth && !platformValues.curseforge) {
+    throw new Error("docs/sinytra-wiki.json must define a Modrinth or CurseForge project.");
+  }
+
+  return {
+    ...defaults,
+    documentationFormat: parsed.schema === "1" ? "moddedmc-v1" : "moddedmc-legacy",
+    id: parsed.id,
+    modId: parsed.modid === undefined
+      ? defaults.modId
+      : parseModId(parsed.modid, "modid in docs/sinytra-wiki.json"),
+    owners: parsed.owners === undefined
+      ? defaults.owners
+      : parseOwners(parsed.owners, "owners in docs/sinytra-wiki.json"),
+    licenses: parsed.licenses === undefined
+      ? defaults.licenses
+      : parseLicenses(parsed.licenses, "licenses in docs/sinytra-wiki.json"),
+    platforms: platformValues,
+    versions: parsed.versions === undefined
+      ? defaults.versions
+      : parseVersions(parsed.versions, "docs/sinytra-wiki.json"),
+  };
+}
+
 export async function readProjectConfiguration(
   docsDirectory: string,
   defaults: ProjectConfiguration,
 ): Promise<ProjectConfiguration> {
+  const compatibleDefaults = await readModdedMcProjectConfiguration(docsDirectory, defaults);
   const configurationFile = path.join(docsDirectory, "repodocs.yml");
   let stats: Awaited<ReturnType<typeof lstat>>;
   try {
     stats = await lstat(configurationFile);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return defaults;
+      return compatibleDefaults;
     }
     throw new Error("RepoDocs could not read docs/repodocs.yml.", { cause: error });
   }
@@ -102,7 +181,7 @@ export async function readProjectConfiguration(
   }
   if (parsed.schema === undefined) {
     process.stderr.write(`Ignored ${configurationFile}: missing numeric schema: 1.\n`);
-    return defaults;
+    return compatibleDefaults;
   }
   if (parsed.schema !== 1) {
     throw new Error("docs/repodocs.yml must use the numeric value schema: 1.");
@@ -110,8 +189,8 @@ export async function readProjectConfiguration(
   if (typeof parsed.id !== "string" || !validProjectId.test(parsed.id)) {
     throw new Error("id in docs/repodocs.yml must start with a lowercase letter and use only lowercase letters, numbers, or hyphens.");
   }
-  if (parsed.id !== defaults.id) {
-    throw new Error(`Project ID "${parsed.id}" does not match the registered ID "${defaults.id}".`);
+  if (parsed.id !== compatibleDefaults.id) {
+    throw new Error(`Project ID "${parsed.id}" does not match the registered ID "${compatibleDefaults.id}".`);
   }
   for (const key of Object.keys(parsed)) {
     if (!projectConfigurationKeys.has(key)) throw new Error(`Unknown field in docs/repodocs.yml: ${key}`);
@@ -123,43 +202,43 @@ export async function readProjectConfiguration(
     throw new Error("rootREADME in docs/repodocs.yml must be true or false.");
   }
   const versions = parsed.versions === undefined
-    ? defaults.versions
+    ? compatibleDefaults.versions
     : parseVersions(parsed.versions, "docs/repodocs.yml");
   const platforms = parsed.platforms === undefined
-    ? defaults.platforms
+    ? compatibleDefaults.platforms
     : parsePlatforms(parsed.platforms, "docs/repodocs.yml");
   const summary = parsed.summary === undefined
-    ? defaults.summary
+    ? compatibleDefaults.summary
     : parseSummary(parsed.summary, "summary in docs/repodocs.yml");
   const modId = parsed.modId === undefined
-    ? defaults.modId
+    ? compatibleDefaults.modId
     : parseModId(parsed.modId, "modId in docs/repodocs.yml");
   const owners = parsed.owners === undefined
-    ? defaults.owners
+    ? compatibleDefaults.owners
     : parseOwners(parsed.owners, "owners in docs/repodocs.yml");
   const gameVersions = parsed.gameVersions === undefined
-    ? defaults.gameVersions
+    ? compatibleDefaults.gameVersions
     : parseGameVersions(parsed.gameVersions, "gameVersions in docs/repodocs.yml");
   const loaders = parsed.loaders === undefined
-    ? defaults.loaders
+    ? compatibleDefaults.loaders
     : parseLoaders(parsed.loaders, "loaders in docs/repodocs.yml");
   const tags = parsed.tags === undefined
-    ? defaults.tags
+    ? compatibleDefaults.tags
     : parseTags(parsed.tags, "tags in docs/repodocs.yml");
   const licenses = parsed.licenses === undefined
-    ? defaults.licenses
+    ? compatibleDefaults.licenses
     : parseLicenses(parsed.licenses, "licenses in docs/repodocs.yml");
-  const name = parsed.name === undefined ? defaults.name : parsed.name;
+  const name = parsed.name === undefined ? compatibleDefaults.name : parsed.name;
   if (typeof name !== "string" || !name.trim() || name.trim().length > 100 || /[\r\n]/.test(name)) {
     throw new Error("name in docs/repodocs.yml must be one line with 1 to 100 characters.");
   }
-  const rawDefaultLocale = parsed.defaultLocale ?? defaults.defaultLocale;
+  const rawDefaultLocale = parsed.defaultLocale ?? compatibleDefaults.defaultLocale;
   if (typeof rawDefaultLocale !== "string" || !validLocale.test(rawDefaultLocale.toLowerCase())) {
     throw new Error('defaultLocale in docs/repodocs.yml must be a language code such as "en" or "pt-br".');
   }
 
-  let documentationType = defaults.documentationType;
-  let category = defaults.category;
+  let documentationType = compatibleDefaults.documentationType;
+  let category = compatibleDefaults.category;
   if (parsed.type !== undefined && parsed.category !== undefined) {
     if (typeof parsed.type !== "string" || typeof parsed.category !== "string") {
       throw new Error("The type and category in docs/repodocs.yml must be strings.");
@@ -174,6 +253,7 @@ export async function readProjectConfiguration(
     }
   }
   return {
+    documentationFormat: compatibleDefaults.documentationFormat,
     id: parsed.id,
     name: name.trim(),
     summary,
@@ -187,10 +267,10 @@ export async function readProjectConfiguration(
     licenses,
     platforms,
     useReadmeFrontPage: parsed.rootREADME === undefined
-      ? defaults.useReadmeFrontPage
+      ? compatibleDefaults.useReadmeFrontPage
       : parsed.rootREADME,
     footerLinks: parsed.footer === undefined
-      ? defaults.footerLinks
+      ? compatibleDefaults.footerLinks
       : parseFooterLinks(parsed.footer, "footer in docs/repodocs.yml"),
     versions,
     defaultLocale: rawDefaultLocale.toLowerCase().replaceAll("_", "-"),
@@ -198,9 +278,9 @@ export async function readProjectConfiguration(
 }
 
 function pagePathFromFile(relativeFile: string): string {
-  const withoutExtension = relativeFile.replace(/\.md$/i, "");
+  const withoutExtension = relativeFile.replace(/\.mdx?$/i, "");
   const basename = path.posix.basename(withoutExtension).toLowerCase();
-  if (basename === "index" || basename === "readme") {
+  if (basename === "index" || basename === "readme" || basename === "_index" || basename === "_homepage") {
     const directory = path.posix.dirname(withoutExtension);
     return directory === "." ? "" : directory;
   }
@@ -208,11 +288,11 @@ function pagePathFromFile(relativeFile: string): string {
 }
 
 function contentRoot(files: string[]): string {
-  if (files.some((file) => /^(?:index|readme)\.md$/i.test(file))) return "";
+  if (files.some((file) => /^(?:_?index|_homepage|readme)\.mdx?$/i.test(file))) return "";
   const firstSegments = new Set(files.map((file) => file.split("/")[0]));
   if (firstSegments.size !== 1) return "";
   const [directory] = firstSegments;
-  return files.some((file) => new RegExp(`^${directory.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/(?:index|readme)\\.md$`, "i").test(file))
+  return files.some((file) => new RegExp(`^${directory.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/(?:_?index|_homepage|readme)\\.mdx?$`, "i").test(file))
     ? directory
     : "";
 }
@@ -231,7 +311,7 @@ function pageTitle(markdownSource: string, relativeFile: string): string {
       .replace(/\s+/g, " ")
       .trim();
   if (heading) return heading.replace(/[`*_]/g, "");
-  const basename = path.basename(relativeFile, ".md");
+  const basename = path.basename(relativeFile, path.extname(relativeFile));
   return basename
     .replace(/[-_]+/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -260,6 +340,7 @@ function configureMarkdown(
   headings: Heading[],
   assetSource: "docs" | "repository",
   assetBasePath: string,
+  assetRelativePrefix = "",
 ): void {
   const usedHeadings = new Map<string, number>();
   const publicAssetPath = (relativePath: string): string => {
@@ -276,12 +357,17 @@ function configureMarkdown(
     if (pagePath !== undefined) {
       return `${routeBase}${pagePath ? `/${pagePath}` : ""}/${hash ? `#${hash}` : ""}`;
     }
-    return resolved.startsWith("../") ? href : `${publicAssetPath(resolved)}${hash ? `#${hash}` : ""}`;
+    const assetFile = path.posix.join(assetRelativePrefix, currentFile);
+    const resolvedAsset = path.posix.normalize(
+      path.posix.join(path.posix.dirname(assetFile), decodeURIComponent(target)),
+    );
+    return resolvedAsset.startsWith("../") ? href : `${publicAssetPath(resolvedAsset)}${hash ? `#${hash}` : ""}`;
   };
   const rewriteImage = (source: string): string => {
     if (/^[a-z][a-z\d+.-]*:/i.test(source) || source.startsWith("/")) return source;
+    const assetFile = path.posix.join(assetRelativePrefix, currentFile);
     const resolved = path.posix.normalize(
-      path.posix.join(path.posix.dirname(currentFile), decodeURIComponent(source)),
+      path.posix.join(path.posix.dirname(assetFile), decodeURIComponent(source)),
     );
     return resolved.startsWith("../") ? source : publicAssetPath(resolved);
   };
@@ -369,7 +455,7 @@ async function findMarkdownFiles(
     if (!prefix && entry.isDirectory() && excludedRootDirectories.has(entry.name)) continue;
     const relative = path.posix.join(prefix, entry.name);
     if (entry.isDirectory()) results.push(...(await findMarkdownFiles(directory, relative, excludedRootDirectories)));
-    else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) results.push(relative);
+    else if (entry.isFile() && /\.mdx?$/i.test(entry.name)) results.push(relative);
   }
   return results;
 }
@@ -400,8 +486,9 @@ function resolveNavigationTarget(
   const resolved = path.posix.normalize(path.posix.join(directory, target));
   if (resolved === ".." || resolved.startsWith("../")) return null;
   if (context.validFiles.has(resolved)) return { type: "file", path: resolved };
-  if (!resolved.toLowerCase().endsWith(".md") && context.validFiles.has(`${resolved}.md`)) {
-    return { type: "file", path: `${resolved}.md` };
+  if (!/\.mdx?$/i.test(resolved)) {
+    if (context.validFiles.has(`${resolved}.md`)) return { type: "file", path: `${resolved}.md` };
+    if (context.validFiles.has(`${resolved}.mdx`)) return { type: "file", path: `${resolved}.mdx` };
   }
   const prefix = resolved ? `${resolved}/` : "";
   if (context.files.some((file) => file.startsWith(prefix))) {
@@ -419,9 +506,11 @@ function directNavigationTargets(directory: string, context: NavigationContext):
     const [first, ...rest] = remainder.split("/");
     targets.add(rest.length ? first : remainder);
   }
+  targets.delete("_index.mdx");
+  targets.delete("_homepage.mdx");
   return [...targets].sort((a, b) => {
-    const aHome = /^(readme|index)\.md$/i.test(a);
-    const bHome = /^(readme|index)\.md$/i.test(b);
+    const aHome = /^(readme|_?index|_homepage)\.mdx?$/i.test(a);
+    const bHome = /^(readme|_?index|_homepage)\.mdx?$/i.test(b);
     if (aHome !== bHome) return aHome ? -1 : 1;
     return a.localeCompare(b);
   });
@@ -530,9 +619,43 @@ async function navigationForDirectory(
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
+
+  let folderMetadata: Record<string, unknown> | null = null;
+  const folderMetadataFile = path.join(context.docsDirectory, directory, "_meta.json");
+  try {
+    const stats = await lstat(folderMetadataFile);
+    if (stats.isFile() && !stats.isSymbolicLink()) {
+      const value = JSON.parse(await readFile(folderMetadataFile, "utf8")) as unknown;
+      if (!value || typeof value !== "object" || Array.isArray(value)) {
+        throw new Error(`${folderMetadataFile} must contain a JSON object.`);
+      }
+      folderMetadata = value as Record<string, unknown>;
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Could not read folder metadata: ${folderMetadataFile}`, { cause: error });
+    }
+  }
+
+  const targets = directNavigationTargets(directory, context);
+  if (folderMetadata) {
+    const order = Object.keys(folderMetadata);
+    targets.sort((left, right) => {
+      const leftIndex = order.indexOf(left);
+      const rightIndex = order.indexOf(right);
+      if (leftIndex === -1 || rightIndex === -1) return leftIndex === rightIndex ? 0 : leftIndex === -1 ? 1 : -1;
+      return leftIndex - rightIndex;
+    });
+  }
   const items: NavItem[] = [];
-  for (const target of directNavigationTargets(directory, context)) {
-    items.push(await navigationItemForTarget(target, directory, context));
+  for (const target of targets) {
+    const metadata = folderMetadata?.[target];
+    const metadataName = typeof metadata === "string"
+      ? metadata
+      : metadata && typeof metadata === "object" && !Array.isArray(metadata) && typeof (metadata as Record<string, unknown>).name === "string"
+        ? String((metadata as Record<string, unknown>).name)
+        : undefined;
+    items.push(await navigationItemForTarget(target, directory, context, metadataName || undefined));
   }
   return items;
 }
@@ -558,6 +681,7 @@ export async function buildDocumentation(
   revision: string,
   displayName = repository.repository,
   defaultClassification: ProjectConfiguration = {
+    documentationFormat: "repodocs",
     id: repository.slug,
     name: displayName,
     summary: null,
@@ -579,19 +703,23 @@ export async function buildDocumentation(
   historyFallback?: (sourcePath: string) => Promise<DocumentHistory>,
   options: DocumentationBuildOptions = {},
 ): Promise<CachedProject> {
-  const docsRelativeDirectory = options.docsRelativeDirectory ?? "docs";
+  const configurationDirectory = path.join(repositoryDirectory, "docs");
+  const projectConfiguration = options.configuration
+    ?? await readProjectConfiguration(configurationDirectory, defaultClassification);
+  const docsRelativeDirectory = options.docsRelativeDirectory
+    ?? (projectConfiguration.documentationFormat === "moddedmc-v1" ? "docs/docs" : "docs");
   const docsDirectory = path.join(repositoryDirectory, docsRelativeDirectory);
   let docsStats: Awaited<ReturnType<typeof lstat>>;
   try {
     docsStats = await lstat(docsDirectory);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      throw new MissingDocumentationError("This repository does not have a root docs/ directory.");
+      throw new MissingDocumentationError(`This repository does not have a ${docsRelativeDirectory}/ directory.`);
     }
     throw error;
   }
   if (!docsStats.isDirectory() || docsStats.isSymbolicLink()) {
-    throw new MissingDocumentationError("This repository does not have a valid root docs/ directory.");
+    throw new MissingDocumentationError(`This repository does not have a valid ${docsRelativeDirectory}/ directory.`);
   }
 
   const files = await findMarkdownFiles(
@@ -600,11 +728,8 @@ export async function buildDocumentation(
     docsRelativeDirectory === "docs" ? new Set(["translations"]) : new Set(),
   );
   if (!files.length) {
-    throw new MissingDocumentationError("The docs/ directory does not contain Markdown files.");
+    throw new MissingDocumentationError(`${docsRelativeDirectory}/ does not contain Markdown or MDX files.`);
   }
-  const configurationDirectory = path.join(repositoryDirectory, "docs");
-  const projectConfiguration = options.configuration
-    ?? await readProjectConfiguration(configurationDirectory, defaultClassification);
   const { useReadmeFrontPage, defaultLocale } = projectConfiguration;
   const projectSettings = {
     summary: projectConfiguration.summary,
@@ -635,10 +760,10 @@ export async function buildDocumentation(
     const pagePath = publicPagePath(file, root);
     routePaths.set(file, pagePath);
     pagePaths.set(file, pagePath);
-    pagePaths.set(file.replace(/\.md$/i, ""), pagePath);
-    if (/\/(?:index|readme)\.md$/i.test(file)) {
-      pagePaths.set(file.replace(/\/(?:index|readme)\.md$/i, ""), pagePath);
-    } else if (/^(?:index|readme)\.md$/i.test(file)) {
+    pagePaths.set(file.replace(/\.mdx?$/i, ""), pagePath);
+    if (/\/(?:_?index|_homepage|readme)\.mdx?$/i.test(file)) {
+      pagePaths.set(file.replace(/\/(?:_?index|_homepage|readme)\.mdx?$/i, ""), pagePath);
+    } else if (/^(?:_?index|_homepage|readme)\.mdx?$/i.test(file)) {
       pagePaths.set("", pagePath);
     }
   }
@@ -669,6 +794,7 @@ export async function buildDocumentation(
       headings,
       "docs",
       options.assetBasePath ?? `/repository-assets/${repository.slug}`,
+      path.posix.relative("docs", docsRelativeDirectory),
     );
     const pagePath = routePaths.get(file)!;
     titles.set(file, title);

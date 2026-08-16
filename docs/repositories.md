@@ -124,6 +124,8 @@ footer:
 
 The published [JSON Schema](/schemas/repodocs.schema.json) provides validation and editor completion. Use a YAML language-server comment to connect a source file to the schema.
 
+A project that also publishes on ModdedMC can use `docs/sinytra-wiki.json` and the ModdedMC V1 folder layout instead. RepoDocs reads that file directly. It does not require duplicated shared metadata in `repodocs.yml`. See [ModdedMC compatibility](moddedmc-compatibility.md).
+
 Set `name` and `summary` to let the source repository own the public project identity. The summary is plain text. It must fit on one line and cannot exceed 240 characters.
 
 Set `type` and `category` together when the source repository must replace the local classification. Both values must use lowercase letters, numbers, or hyphens. A Minecraft project must use `mod` or `modpack` as its category. The file can omit both values when it only sets other project metadata.

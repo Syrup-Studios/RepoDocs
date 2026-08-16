@@ -4,7 +4,7 @@ Each source repository owns its pages, navigation, and documentation assets.
 
 ## Prepare the source repository
 
-The source repository must have a `docs/` directory at its root. This directory must contain at least one Markdown file.
+The source repository must have a `docs/` directory at its root. A native RepoDocs package contains its Markdown pages directly in this directory. A shared ModdedMC V1 package uses a different layout under the same directory. See [ModdedMC compatibility](moddedmc-compatibility.md) for that layout.
 
 ```text
 my-project/
@@ -37,7 +37,7 @@ If there is no root index page, RepoDocs uses the first page in the navigation a
 
 ## Markdown behavior
 
-RepoDocs uses Markdown-it to render `.md` files. It supports headings, lists, links, images, block quotes, tables, and fenced code blocks. Code fences get syntax highlighting when the language is known. Safe HTML elements are supported. Unsafe elements, event handlers, and attributes are removed.
+RepoDocs uses Markdown-it to render `.md` and `.mdx` files. It supports headings, lists, links, images, block quotes, tables, and fenced code blocks. Code fences get syntax highlighting when the language is known. Safe HTML elements are supported. Unsafe elements, event handlers, and attributes are removed. RepoDocs treats `.mdx` as Markdown and does not execute imports, JavaScript expressions, or React components.
 
 Images can use relative paths. Assets under `docs/` are copied with the documentation. When `rootREADME` is active, images from the root README are copied from the repository and their URLs are rewritten.
 

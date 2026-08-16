@@ -9,7 +9,7 @@ The published site does not need a database, a server process, or access to Git.
 A build has three main stages:
 
 1. **Sync:** RepoDocs reads each YAML file in `repositories/`. It clones a new repository or fetches every configured documentation branch into its local cache.
-2. **Compile:** RepoDocs reads the repository's root `docs/` directory on each branch. It converts Markdown to HTML, builds navigation, compiles translations, rewrites local links, copies versioned assets, and reads page history from Git.
+2. **Compile:** RepoDocs reads the repository's root `docs/` directory on each branch. It converts Markdown or compatible MDX to HTML, builds navigation, compiles translations, rewrites local links, copies versioned assets, and reads page history from Git.
 3. **Publish:** Vite builds the browser files. The prerender script writes an `index.html` file for every project, directory, documentation page, and the 404 page.
 
 The browser bundle adds client-side navigation and search. The main content is already in the generated HTML. A page remains useful before React starts.
@@ -61,5 +61,6 @@ The Markdown files in `docs/` are the source for this guide. The `docs/repodocs.
 ## Continue setup
 
 - [Configure repositories and versions](repositories.md).
+- [Use one documentation package with ModdedMC](moddedmc-compatibility.md).
 - [Write and organize documentation](authoring.md).
 - [Build and deploy the site](operations.md).

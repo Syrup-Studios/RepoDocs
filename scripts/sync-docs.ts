@@ -56,7 +56,7 @@ async function copyDocumentationAssets(source: string, destination: string): Pro
     const destinationPath = path.join(destination, entry.name);
     if (entry.isDirectory()) {
       await copyDocumentationAssets(sourcePath, destinationPath);
-    } else if (entry.isFile() && !entry.name.toLowerCase().endsWith(".md")) {
+    } else if (entry.isFile() && !/\.mdx?$/i.test(entry.name)) {
       await copyFile(sourcePath, destinationPath);
     }
   }));
@@ -107,8 +107,16 @@ function localizedFallbackPages(
   ]));
 }
 
-async function translationDirectories(repositoryDirectory: string): Promise<Array<{ code: string; relativePath: string }>> {
-  const root = path.join(repositoryDirectory, "docs", "translations");
+async function translationDirectories(
+  repositoryDirectory: string,
+  format: ProjectConfiguration["documentationFormat"],
+): Promise<Array<{ code: string; relativePath: string }>> {
+  const directoryName = format === "moddedmc-v1"
+    ? "translated"
+    : format === "moddedmc-legacy"
+      ? ".translated"
+      : "translations";
+  const root = path.join(repositoryDirectory, "docs", directoryName);
   let entries: Dirent<string>[];
   try {
     entries = await readdir(root, { withFileTypes: true });
@@ -121,11 +129,19 @@ async function translationDirectories(repositoryDirectory: string): Promise<Arra
     if (!entry.isDirectory() || entry.isSymbolicLink()) return [];
     const code = entry.name.toLowerCase().replaceAll("_", "-");
     if (!/^[a-z]{2}(?:-[a-z0-9]{2,8})?$/.test(code)) {
-      throw new Error(`Invalid documentation locale directory: docs/translations/${entry.name}`);
+      throw new Error(`Invalid documentation locale directory: docs/${directoryName}/${entry.name}`);
     }
     if (locales.has(code)) throw new Error(`Duplicate documentation locale: ${code}`);
     locales.add(code);
-    return [{ code, relativePath: path.posix.join("docs", "translations", entry.name) }];
+    return [{
+      code,
+      relativePath: path.posix.join(
+        "docs",
+        directoryName,
+        entry.name,
+        ...(format === "moddedmc-v1" ? ["docs"] : []),
+      ),
+    }];
   });
 }
 
@@ -133,6 +149,7 @@ function projectDefaults(
   source: Awaited<ReturnType<typeof loadRepositorySources>>[number],
 ): ProjectConfiguration {
   return {
+    documentationFormat: "repodocs",
     id: source.slug,
     name: source.name,
     summary: source.summary,
@@ -194,7 +211,7 @@ async function compileVersion(
   const locales: Record<string, CachedDocumentationLocale> = {
     [configuration.defaultLocale]: baseLocale,
   };
-  for (const translation of await translationDirectories(repositoryDirectory)) {
+  for (const translation of await translationDirectories(repositoryDirectory, configuration.documentationFormat)) {
     if (translation.code === configuration.defaultLocale) {
       throw new Error(`The default locale "${translation.code}" cannot also be a translation directory.`);
     }
@@ -209,7 +226,7 @@ async function compileVersion(
         projectDocumentationBasePath(routeProject, versionId, translation.code),
         undefined,
         {
-          assetBasePath: `${assetPublicPath}/${translation.relativePath.slice("docs/".length)}`,
+          assetBasePath: assetPublicPath,
           configuration,
           docsRelativeDirectory: translation.relativePath,
           includeRootReadme: false,
@@ -429,6 +446,7 @@ async function main(): Promise<void> {
     siteRevision,
     config.site.name,
     {
+      documentationFormat: "repodocs",
       id: "repodocs",
       name: config.site.name,
       summary: config.site.description,

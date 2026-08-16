@@ -28,6 +28,7 @@ Read the [full RepoDocs guide](docs/index.md) for:
 - Site and repository configuration.
 - Git branch versions and translated documentation.
 - Versioned `docs/repodocs.yml` metadata with project identity, owners, compatibility, licenses, and platform references.
+- Direct support for current and legacy ModdedMC Wiki metadata, MDX pages, navigation, assets, translations, and version branches.
 - Automatic project and documentation license detection with source links.
 - Source repository structure.
 - Project classification and repository-wide footers.

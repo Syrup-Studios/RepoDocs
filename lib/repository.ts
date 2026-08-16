@@ -150,13 +150,23 @@ export async function readRepositoryFileHistory(
   repositoryDirectory: string,
   relativeFile: string,
 ): Promise<RepositoryFileHistory> {
-  const output = await runGit([
-    "log",
-    "--follow",
-    "--format=%aI%x1f%an%x1f%ae%x1e",
-    "--",
-    relativeFile,
-  ], repositoryDirectory);
+  const [output, createdAt] = await Promise.all([
+    runGit([
+      "log",
+      "--follow",
+      "--format=%aI%x1f%an%x1f%ae%x1e",
+      "--",
+      relativeFile,
+    ], repositoryDirectory),
+    runGit([
+      "log",
+      "-1",
+      "--diff-filter=A",
+      "--format=%aI",
+      "--",
+      relativeFile,
+    ], repositoryDirectory),
+  ]);
   const commits = output
     .split("\x1e")
     .map((record) => record.trim())
@@ -167,7 +177,7 @@ export async function readRepositoryFileHistory(
     })
     .filter((commit) => commit.date && commit.name);
 
-  if (commits.length === 0) {
+  if (commits.length === 0 || !createdAt) {
     throw new Error(`Git history is missing for ${relativeFile}.`);
   }
 
@@ -179,7 +189,7 @@ export async function readRepositoryFileHistory(
 
   return {
     updatedAt: commits[0].date,
-    createdAt: commits[commits.length - 1].date,
+    createdAt,
     authors: [...new Set(authors.values())],
   };
 }

@@ -1,7 +1,8 @@
-import { BookOpen, ChevronRight, Github } from "lucide-react";
+import { BookOpen, Github } from "lucide-react";
 import { DocumentationContent } from "@/components/documentation-content";
 import { DocsNav } from "@/components/docs-nav";
 import { DocumentationSearch } from "@/components/documentation-search";
+import { ProjectTree } from "@/components/project-tree";
 import { projectBasePath, projectPageHref } from "@/lib/routes";
 import { repositoryCommitHref, repositoryFileHref } from "@/lib/repository-links";
 import type { SiteConfig } from "@/lib/config";
@@ -91,17 +92,15 @@ export function DocumentationPage({
                 return <a className={isCurrent ? "project-tree-link active" : "project-tree-link"} href={href} key={listedProject.slug}>{listedProject.name}</a>;
               }
               return (
-                <details className={isCurrent ? "project-tree active" : "project-tree"} key={listedProject.slug} open={isCurrent || undefined}>
-                  <summary>
-                    <a href={href}>{listedProject.name}</a>
-                    <ChevronRight className="project-tree-chevron" size={15} aria-hidden="true" />
-                  </summary>
-                  <DocsNav
-                    items={navigation}
-                    basePath={projectBasePath(listedProject)}
-                    currentPath={isCurrent ? currentPath : "__closed__"}
-                  />
-                </details>
+                <ProjectTree
+                  name={listedProject.name}
+                  href={href}
+                  navigation={navigation}
+                  basePath={projectBasePath(listedProject)}
+                  currentPath={isCurrent ? currentPath : "__closed__"}
+                  isCurrent={isCurrent}
+                  key={listedProject.slug}
+                />
               );
             })}
           </div>

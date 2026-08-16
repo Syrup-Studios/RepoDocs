@@ -215,13 +215,15 @@ button, input { font: inherit; }
 .project-tree { margin-left: 0; }
 .project-tree-link { min-height: 31px; display: flex; align-items: center; color: #aeb2bb; font-size: 15px; }
 .project-tree-link:hover, .project-tree-link.active { color: var(--accent); }
-.project-tree summary { min-height: 31px; display: flex; align-items: center; gap: 6px; color: #aeb2bb; cursor: pointer; font-size: 15px; list-style: none; }
-.project-tree summary::-webkit-details-marker { display: none; }
-.project-tree summary > a { min-width: 0; flex: 1; overflow: hidden; color: inherit; text-overflow: ellipsis; white-space: nowrap; }
-.project-tree summary > a:hover, .project-tree.active > summary { color: var(--accent); }
+.project-tree-header { min-height: 31px; display: flex; align-items: center; color: #aeb2bb; font-size: 15px; }
+.project-tree-header > a { min-width: 0; flex: 1; overflow: hidden; color: inherit; text-overflow: ellipsis; white-space: nowrap; }
+.project-tree-header > a:hover, .project-tree.active > .project-tree-header { color: var(--accent); }
+.project-tree-toggle { width: 31px; height: 31px; flex: 0 0 31px; display: grid; place-items: center; padding: 0; color: inherit; background: transparent; border: 0; border-radius: 3px; cursor: pointer; }
+.project-tree-toggle:hover { color: white; background: rgb(255 255 255 / 5%); }
+.project-tree-toggle:focus-visible { outline: 2px solid var(--accent-line); outline-offset: -2px; }
 .project-tree-chevron { flex: 0 0 auto; transition: transform .15s ease; }
-.project-tree[open] > summary .project-tree-chevron { transform: rotate(90deg); }
-.project-tree > .docs-nav { margin-left: 12px; }
+.project-tree.open .project-tree-chevron { transform: rotate(90deg); }
+.project-tree-navigation > .docs-nav { margin-left: 12px; }
 .game-directory-main { grid-column: 2; grid-row: 3; min-width: 0; padding: 56px 44px 72px; }
 .game-directory-main h1 { margin: 0 0 20px; color: #e7e8eb; font-size: 40px; line-height: 1.3; }
 .game-directory-main > p { max-width: 760px; margin: 0; color: #c6c9cf; font-size: 20px; line-height: 1.6; }

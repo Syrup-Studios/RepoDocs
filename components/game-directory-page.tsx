@@ -1,6 +1,6 @@
-import { BookOpen, ChevronRight, Github } from "lucide-react";
-import { DocsNav } from "@/components/docs-nav";
+import { BookOpen, Github } from "lucide-react";
 import { DocumentationSearch } from "@/components/documentation-search";
+import { ProjectTree } from "@/components/project-tree";
 import { projectBasePath, projectPageHref } from "@/lib/routes";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedProject } from "@/lib/types";
@@ -71,13 +71,14 @@ export function GameDirectoryPage({
               return <a className="project-tree-link" href={href} key={project.slug}>{project.name}</a>;
             }
             return (
-              <details className="project-tree" key={project.slug}>
-                <summary>
-                  <a href={href}>{project.name}</a>
-                  <ChevronRight className="project-tree-chevron" size={15} aria-hidden="true" />
-                </summary>
-                <DocsNav items={navigation} basePath={projectBasePath(project)} currentPath="__category__" />
-              </details>
+              <ProjectTree
+                name={project.name}
+                href={href}
+                navigation={navigation}
+                basePath={projectBasePath(project)}
+                currentPath="__category__"
+                key={project.slug}
+              />
             );
           })}
         </nav>

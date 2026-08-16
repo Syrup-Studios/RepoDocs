@@ -112,7 +112,7 @@ export function DocumentationPage({
       <DocumentationContent
         page={page}
         referenceDate={project.builtAt}
-        sourcePath={`docs/${page.sourcePath}`}
+        sourcePath={page.sourcePath}
         sourceRevision={project.sourceRevision}
       />
     </div>

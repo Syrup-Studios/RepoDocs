@@ -431,7 +431,7 @@ export async function buildDocumentation(
     titles.set(file, title);
     pages[pagePath] = {
       path: pagePath,
-      sourcePath: file,
+      sourcePath: path.posix.join("docs", file),
       title,
       description: pageDescription(preparedSource),
       html: markdown.render(preparedSource),
@@ -440,7 +440,6 @@ export async function buildDocumentation(
     };
   }
 
-  let readmePagePath: string | null = null;
   if (useReadmeFrontPage) {
     const readmeFile = path.join(repositoryDirectory, "README.md");
     let readmeStats: Awaited<ReturnType<typeof lstat>>;
@@ -456,13 +455,6 @@ export async function buildDocumentation(
       throw new Error("rootREADME requires a regular root README.md file.");
     }
 
-    readmePagePath = "repository-readme";
-    let suffix = 2;
-    while (pages[readmePagePath]) {
-      readmePagePath = `repository-readme-${suffix}`;
-      suffix += 1;
-    }
-
     const source = await readFile(readmeFile, "utf8");
     const history = await readRepositoryFileHistory(repositoryDirectory, "README.md");
     const preparedSource = prepareMarkdown(source);
@@ -470,8 +462,8 @@ export async function buildDocumentation(
     const rootPagePaths = new Map(pagePaths);
     for (const [file, pagePath] of pagePaths) rootPagePaths.set(path.posix.join("docs", file), pagePath);
     configureMarkdown(markdown, "README.md", repository.slug, routeBase, rootPagePaths, headings);
-    pages[readmePagePath] = {
-      path: readmePagePath,
+    pages[""] = {
+      path: "",
       sourcePath: "README.md",
       title: pageTitle(source, "README.md"),
       description: pageDescription(preparedSource),
@@ -520,7 +512,7 @@ export async function buildDocumentation(
     });
   }
 
-  const defaultPage = readmePagePath ?? (pages[""] ? "" : firstPage(navigation));
+  const defaultPage = pages[""] ? "" : firstPage(navigation);
   if (defaultPage === null) throw new Error("The navigation does not contain a page.");
 
   return {

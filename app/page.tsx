@@ -10,6 +10,7 @@ import { GameDirectoryPage } from "@/components/game-directory-page";
 import { DocumentationContent } from "@/components/documentation-content";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { categorySegment, projectPageHref } from "@/lib/routes";
+import { repositoryCommitHref, repositoryFileHref } from "@/lib/repository-links";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedProject, GeneratedDocumentation } from "@/lib/types";
 
@@ -125,7 +126,9 @@ export default function HomePage({ documentation, selection, site }: { documenta
             page={docsPage}
             referenceDate={generatedAt}
             sourcePath="docs/index.md"
-            sourceRevision={docsPage.sourceRevision}
+            commitRevision={docsPage.history.updatedRevision}
+            sourceHref={repositoryFileHref(site.repository, docsPage.sourceRevision, "docs/index.md")}
+            commitHref={repositoryCommitHref(site.repository, docsPage.history.updatedRevision)}
           />
         ) : (
           <>

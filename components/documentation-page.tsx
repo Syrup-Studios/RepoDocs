@@ -3,6 +3,7 @@ import { DocumentationContent } from "@/components/documentation-content";
 import { DocsNav } from "@/components/docs-nav";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { projectBasePath, projectPageHref } from "@/lib/routes";
+import { repositoryCommitHref, repositoryFileHref } from "@/lib/repository-links";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedPage, CachedProject, NavItem } from "@/lib/types";
 
@@ -113,7 +114,9 @@ export function DocumentationPage({
         page={page}
         referenceDate={project.builtAt}
         sourcePath={page.sourcePath}
-        sourceRevision={project.sourceRevision}
+        commitRevision={page.history.updatedRevision}
+        sourceHref={repositoryFileHref(project.repositoryUrl, project.sourceRevision, page.sourcePath)}
+        commitHref={repositoryCommitHref(project.repositoryUrl, page.history.updatedRevision)}
       />
     </div>
   );

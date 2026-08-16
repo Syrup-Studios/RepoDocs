@@ -5,6 +5,7 @@ export type NavItem =
 export type DocumentHistory = {
   createdAt: string;
   updatedAt: string;
+  updatedRevision: string;
   authors: string[];
 };
 

@@ -124,6 +124,7 @@ async function main(): Promise<void> {
   const projects = synchronizedProjects.filter((project): project is CachedProject => project !== null);
 
   const siteDocumentationFile = path.join(process.cwd(), siteDocumentationPath);
+  const siteRevision = await readRepositoryRevision(process.cwd());
   let siteDocumentationHistory;
   try {
     siteDocumentationHistory = await readRepositoryFileHistory(process.cwd(), siteDocumentationPath);
@@ -132,13 +133,14 @@ async function main(): Promise<void> {
     siteDocumentationHistory = {
       createdAt: (fileStats.birthtimeMs > 0 ? fileStats.birthtime : fileStats.mtime).toISOString(),
       updatedAt: fileStats.mtime.toISOString(),
+      updatedRevision: siteRevision,
       authors: [await readRepositoryDefaultAuthor(process.cwd())],
     };
   }
   const siteDocumentation = {
     ...renderMarkdown(await readFile(siteDocumentationFile, "utf8")),
     history: siteDocumentationHistory,
-    sourceRevision: await readRepositoryRevision(process.cwd()),
+    sourceRevision: siteRevision,
   };
   const output = { generatedAt: new Date().toISOString(), siteDocumentation, projects };
   await mkdir(generatedDirectory, { recursive: true });

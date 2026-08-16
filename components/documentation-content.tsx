@@ -52,12 +52,16 @@ export function DocumentationContent({
   page,
   referenceDate,
   sourcePath,
-  sourceRevision,
+  commitRevision,
+  sourceHref,
+  commitHref,
 }: {
   page: RenderedDocumentation;
   referenceDate: string;
   sourcePath: string;
-  sourceRevision: string;
+  commitRevision: string;
+  sourceHref: string;
+  commitHref: string;
 }) {
   return (
     <>
@@ -81,8 +85,8 @@ export function DocumentationContent({
             </span>
           </div>
           <div className="page-source">
-            <span>Source: <code>{sourcePath}</code></span>
-            <span>Commit {sourceRevision.slice(0, 7)}</span>
+            <span>Source: <a href={sourceHref} target="_blank" rel="noreferrer"><code>{sourcePath}</code></a></span>
+            <span>Commit <a href={commitHref} target="_blank" rel="noreferrer">{commitRevision.slice(0, 7)}</a></span>
           </div>
         </footer>
       </main>

@@ -4,8 +4,11 @@ repository: https://github.com/Syrup-Studios/shenanigans
 type: minecraft
 category: modpack
 platforms:
-  modrinth: shenanigans
-  curseforge: shenanigans-cf-edition
+  primary: modrinth
+  modrinth:
+    id: shenanigans
+  curseforge:
+    id: shenanigans-cf-edition
 footer:
   - label: GitHub
     url: https://github.com/Syrup-Studios/shenanigans

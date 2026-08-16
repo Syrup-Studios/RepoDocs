@@ -120,7 +120,7 @@ export function pageMetadata(pathname: string): { title: string; description: st
     const landingPage = resolved.locale.pages[resolved.locale.defaultPage];
     return {
       title: `${resolved.project.name} · ${config.site.name}`,
-      description: landingPage?.description || `${resolved.project.name} documentation.`,
+      description: resolved.project.summary || landingPage?.description || `${resolved.project.name} documentation.`,
       favicon: resolved.project.favicon,
     };
   }

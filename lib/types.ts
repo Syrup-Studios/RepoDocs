@@ -7,9 +7,29 @@ export type RepositoryFooterLink = {
   url: string;
 };
 
+export type ProjectPlatformReference = {
+  id: string;
+};
+
+export type ProjectPlatformName = "modrinth" | "curseforge";
+
 export type ProjectPlatforms = {
-  modrinth?: string;
-  curseforge?: string;
+  primary?: ProjectPlatformName;
+  modrinth?: ProjectPlatformReference;
+  curseforge?: ProjectPlatformReference;
+};
+
+export type ProjectLicense = {
+  id?: string;
+  name?: string;
+  url?: string;
+  source: "metadata" | "repository" | "platform";
+  sourcePath?: string;
+};
+
+export type ProjectLicenses = {
+  project?: ProjectLicense;
+  documentation?: ProjectLicense;
 };
 
 export type DocumentHistory = {
@@ -52,11 +72,18 @@ export type CachedDocumentationVersion = {
 export type CachedProject = {
   slug: string;
   name: string;
+  summary: string | null;
   favicon: string | null;
   repositoryUrl: string;
   repositoryHost: string;
   documentationType: string | null;
   category: string | null;
+  modId: string | null;
+  owners: string[];
+  gameVersions: string[];
+  loaders: string[];
+  tags: string[];
+  licenses: ProjectLicenses;
   platforms: ProjectPlatforms;
   footerLinks: RepositoryFooterLink[];
   defaultVersion: string;

@@ -27,7 +27,8 @@ Read the [full RepoDocs guide](docs/index.md) for:
 
 - Site and repository configuration.
 - Git branch versions and translated documentation.
-- Versioned `docs/repodocs.yml` metadata with platform project IDs.
+- Versioned `docs/repodocs.yml` metadata with project identity, owners, compatibility, licenses, and platform references.
+- Automatic project and documentation license detection with source links.
 - Source repository structure.
 - Project classification and repository-wide footers.
 - Markdown, asset, and navigation behavior.

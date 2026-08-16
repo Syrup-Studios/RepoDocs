@@ -35,13 +35,19 @@ function projectCard(project: CachedProject) {
   const { version, locale } = defaultDocumentationContext(project);
   return (
     <article className="portal-project" key={project.slug}>
-      <div className="project-icon">{project.name.slice(0, 1).toUpperCase()}</div>
+      <div className="project-icon">
+        {project.favicon
+          ? <img src={project.favicon} alt="" width="42" height="42" />
+          : project.name.slice(0, 1).toUpperCase()}
+      </div>
       <div className="project-details">
         <h3>{project.name}</h3>
-        <p>{locale.pages[locale.defaultPage]?.description || "Project documentation from the source repository."}</p>
+        <p>{project.summary || locale.pages[locale.defaultPage]?.description || "Project documentation from the source repository."}</p>
         <div className="project-meta">
           <span><FileText size={14} /> {Object.keys(locale.pages).length} pages</span>
           <span><GitBranch size={14} /> {version.sourceRevision.slice(0, 7)}</span>
+          {project.gameVersions.length > 0 && <span>{project.gameVersions[0]}</span>}
+          {project.loaders.length > 0 && <span>{project.loaders.map(label).join(" · ")}</span>}
           {project.documentationType && project.category && <span className="project-kind">{label(project.documentationType)} · {label(project.category)}</span>}
         </div>
       </div>

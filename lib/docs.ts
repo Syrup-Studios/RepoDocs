@@ -6,14 +6,32 @@ import { parse as parseYaml } from "yaml";
 import sanitizeHtml from "sanitize-html";
 import { createMarkdown, prepareMarkdown, slugifyHeading, type Heading } from "@/lib/markdown";
 import { parseFooterLinks } from "@/lib/footer";
-import { parsePlatforms, parseVersions } from "@/lib/repository-configs";
+import {
+  parseGameVersions,
+  parseLicenses,
+  parseLoaders,
+  parseModId,
+  parseOwners,
+  parsePlatforms,
+  parseSummary,
+  parseTags,
+  parseVersions,
+} from "@/lib/repository-configs";
 import type { CachedPage, CachedProject, DocumentHistory, NavItem, RepositoryFooterLink } from "@/lib/types";
 import { readRepositoryFileHistory, type RepositoryDetails } from "@/lib/repository";
 
 export type ProjectConfiguration = {
   id: string;
+  name: string;
+  summary: string | null;
   documentationType: string | null;
   category: string | null;
+  modId: string | null;
+  owners: string[];
+  gameVersions: string[];
+  loaders: string[];
+  tags: string[];
+  licenses: CachedProject["licenses"];
   platforms: CachedProject["platforms"];
   useReadmeFrontPage: boolean;
   footerLinks: RepositoryFooterLink[];
@@ -36,9 +54,17 @@ const validProjectId = /^[a-z][a-z0-9-]{0,62}$/;
 const projectConfigurationKeys = new Set([
   "schema",
   "id",
+  "name",
+  "summary",
   "platforms",
   "type",
   "category",
+  "modId",
+  "owners",
+  "gameVersions",
+  "loaders",
+  "tags",
+  "licenses",
   "rootREADME",
   "defaultLocale",
   "versions",
@@ -102,6 +128,31 @@ export async function readProjectConfiguration(
   const platforms = parsed.platforms === undefined
     ? defaults.platforms
     : parsePlatforms(parsed.platforms, "docs/repodocs.yml");
+  const summary = parsed.summary === undefined
+    ? defaults.summary
+    : parseSummary(parsed.summary, "summary in docs/repodocs.yml");
+  const modId = parsed.modId === undefined
+    ? defaults.modId
+    : parseModId(parsed.modId, "modId in docs/repodocs.yml");
+  const owners = parsed.owners === undefined
+    ? defaults.owners
+    : parseOwners(parsed.owners, "owners in docs/repodocs.yml");
+  const gameVersions = parsed.gameVersions === undefined
+    ? defaults.gameVersions
+    : parseGameVersions(parsed.gameVersions, "gameVersions in docs/repodocs.yml");
+  const loaders = parsed.loaders === undefined
+    ? defaults.loaders
+    : parseLoaders(parsed.loaders, "loaders in docs/repodocs.yml");
+  const tags = parsed.tags === undefined
+    ? defaults.tags
+    : parseTags(parsed.tags, "tags in docs/repodocs.yml");
+  const licenses = parsed.licenses === undefined
+    ? defaults.licenses
+    : parseLicenses(parsed.licenses, "licenses in docs/repodocs.yml");
+  const name = parsed.name === undefined ? defaults.name : parsed.name;
+  if (typeof name !== "string" || !name.trim() || name.trim().length > 100 || /[\r\n]/.test(name)) {
+    throw new Error("name in docs/repodocs.yml must be one line with 1 to 100 characters.");
+  }
   const rawDefaultLocale = parsed.defaultLocale ?? defaults.defaultLocale;
   if (typeof rawDefaultLocale !== "string" || !validLocale.test(rawDefaultLocale.toLowerCase())) {
     throw new Error('defaultLocale in docs/repodocs.yml must be a language code such as "en" or "pt-br".');
@@ -124,8 +175,16 @@ export async function readProjectConfiguration(
   }
   return {
     id: parsed.id,
+    name: name.trim(),
+    summary,
     documentationType,
     category,
+    modId,
+    owners,
+    gameVersions,
+    loaders,
+    tags,
+    licenses,
     platforms,
     useReadmeFrontPage: parsed.rootREADME === undefined
       ? defaults.useReadmeFrontPage
@@ -500,8 +559,16 @@ export async function buildDocumentation(
   displayName = repository.repository,
   defaultClassification: ProjectConfiguration = {
     id: repository.slug,
+    name: displayName,
+    summary: null,
     documentationType: null,
     category: null,
+    modId: null,
+    owners: [],
+    gameVersions: [],
+    loaders: [],
+    tags: [],
+    licenses: {},
     platforms: {},
     useReadmeFrontPage: false,
     footerLinks: [],
@@ -540,8 +607,15 @@ export async function buildDocumentation(
     ?? await readProjectConfiguration(configurationDirectory, defaultClassification);
   const { useReadmeFrontPage, defaultLocale } = projectConfiguration;
   const projectSettings = {
+    summary: projectConfiguration.summary,
     documentationType: projectConfiguration.documentationType,
     category: projectConfiguration.category,
+    modId: projectConfiguration.modId,
+    owners: projectConfiguration.owners,
+    gameVersions: projectConfiguration.gameVersions,
+    loaders: projectConfiguration.loaders,
+    tags: projectConfiguration.tags,
+    licenses: projectConfiguration.licenses,
     platforms: projectConfiguration.platforms,
     footerLinks: projectConfiguration.footerLinks,
   };
@@ -701,7 +775,7 @@ export async function buildDocumentation(
   };
   return {
     slug: repository.slug,
-    name: displayName,
+    name: projectConfiguration.name,
     favicon: null,
     repositoryUrl: repository.normalizedUrl.replace(/\.git$/, ""),
     repositoryHost: repository.host,

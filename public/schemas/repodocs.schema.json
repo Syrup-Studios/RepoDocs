@@ -15,11 +15,29 @@
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]{0,62}$"
     },
+    "name": {
+      "description": "Project name shown on RepoDocs. It replaces the local registration name.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[^\\r\\n]+$"
+    },
+    "summary": {
+      "description": "Short, plain-text project description used on project cards and overview pages.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[^\\r\\n]+$"
+    },
     "platforms": {
       "description": "Project slugs or IDs on supported distribution platforms.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "primary": {
+          "description": "Preferred source when platform data conflicts.",
+          "enum": ["modrinth", "curseforge"]
+        },
         "modrinth": { "$ref": "#/$defs/platformProject" },
         "curseforge": { "$ref": "#/$defs/platformProject" }
       }
@@ -31,6 +49,41 @@
     "category": {
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "modId": {
+      "description": "Minecraft mod ID used in resources and loader metadata.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "owners": {
+      "description": "GitHub users or organizations that own the project.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$"
+      }
+    },
+    "gameVersions": {
+      "description": "Supported game versions, ordered from newest to oldest.",
+      "$ref": "#/$defs/stringList"
+    },
+    "loaders": {
+      "description": "Supported mod loaders or project runtimes.",
+      "$ref": "#/$defs/slugList"
+    },
+    "tags": {
+      "description": "Searchable project labels.",
+      "$ref": "#/$defs/slugList"
+    },
+    "licenses": {
+      "description": "License information for the project and its documentation.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "project": { "$ref": "#/$defs/license" },
+        "documentation": { "$ref": "#/$defs/license" }
+      }
     },
     "rootREADME": {
       "type": "boolean",
@@ -82,8 +135,58 @@
   ],
   "$defs": {
     "platformProject": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "description": "Project slug or numeric ID on the platform.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        }
+      }
+    },
+    "stringList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "pattern": "^[^\\r\\n]+$" }
+    },
+    "slugList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+      }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "SPDX license identifier when one exists.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "pattern": "^[^\\r\\n]+$"
+        },
+        "name": {
+          "description": "Display name for a custom license or a clearer label.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "pattern": "^[^\\r\\n]+$"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://"
+        }
+      },
+      "anyOf": [
+        { "required": ["id"] },
+        { "required": ["name"] }
+      ]
     }
   }
 }

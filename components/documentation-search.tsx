@@ -81,13 +81,23 @@ function buildIndex(projects: CachedProject[]): SearchEntry[] {
   return projects.flatMap((project) => Object.values(project.versions).flatMap((version) =>
     Object.values(version.locales).flatMap((locale) => Object.values(locale.pages).map((page) => {
       const body = plainText(page.html);
+      const projectMetadata = [
+        project.summary,
+        project.modId,
+        ...project.owners,
+        ...project.gameVersions,
+        ...project.loaders,
+        ...project.tags,
+        ...Object.values(project.platforms).flatMap((platform) => typeof platform === "string" ? [platform] : [platform.id]),
+        ...Object.values(project.licenses).flatMap((license) => [license.id, license.name].filter(Boolean)),
+      ].filter(Boolean).join(" ");
       return {
         project,
         page,
         href: projectPageHref(project, page.path, version.id, locale.code),
         title: normalize(page.title),
         projectName: normalize(project.name),
-        text: normalize(`${page.title} ${project.name} ${version.label} ${locale.label} ${page.description} ${body}`),
+        text: normalize(`${page.title} ${project.name} ${projectMetadata} ${version.label} ${locale.label} ${page.description} ${body}`),
         body,
         locale: locale.label,
         version: version.label,

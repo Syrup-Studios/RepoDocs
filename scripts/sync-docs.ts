@@ -17,6 +17,7 @@ import {
   syncRepository,
 } from "@/lib/repository";
 import { loadRepositorySources } from "@/lib/repository-configs";
+import { detectRepositoryLicenses } from "@/lib/license-detection";
 import { projectDocumentationBasePath } from "@/lib/routes";
 import type {
   CachedDocumentationLocale,
@@ -133,8 +134,16 @@ function projectDefaults(
 ): ProjectConfiguration {
   return {
     id: source.slug,
+    name: source.name,
+    summary: source.summary,
     documentationType: source.documentationType,
     category: source.category,
+    modId: source.modId,
+    owners: source.owners,
+    gameVersions: source.gameVersions,
+    loaders: source.loaders,
+    tags: source.tags,
+    licenses: source.licenses,
     platforms: source.platforms,
     useReadmeFrontPage: source.useReadmeFrontPage,
     footerLinks: source.footerLinks,
@@ -332,10 +341,19 @@ async function syncSource(
   const synced = await syncRepository(repository);
   let project: CachedProject;
   try {
-    const configuration = await readProjectConfiguration(
+    const configured = await readProjectConfiguration(
       path.join(synced.directory, "docs"),
       projectDefaults(source),
     );
+    const detectedLicenses = await detectRepositoryLicenses({
+      branch: synced.defaultBranch,
+      repositoryDirectory: synced.directory,
+      repositoryUrl: parsed.normalizedUrl.replace(/\.git$/, ""),
+    });
+    const configuration: ProjectConfiguration = {
+      ...configured,
+      licenses: { ...detectedLicenses, ...configured.licenses },
+    };
     const versionSpecs = [
       { id: "latest", branch: synced.defaultBranch, revision: synced.revision },
       ...Object.entries(configuration.versions).map(([id, branch]) => ({ id, branch, revision: null })),
@@ -350,7 +368,7 @@ async function syncSource(
         revision,
         spec.branch,
         spec.id,
-        source.name,
+        configuration.name,
         configuration,
       );
       versions[spec.id] = compiled.version;
@@ -412,8 +430,16 @@ async function main(): Promise<void> {
     config.site.name,
     {
       id: "repodocs",
+      name: config.site.name,
+      summary: config.site.description,
       documentationType: null,
       category: null,
+      modId: null,
+      owners: [],
+      gameVersions: [],
+      loaders: [],
+      tags: [],
+      licenses: {},
       platforms: {},
       useReadmeFrontPage: false,
       footerLinks: [],

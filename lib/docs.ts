@@ -3,6 +3,7 @@ import path from "node:path";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import { parse as parseYaml } from "yaml";
+import sanitizeHtml from "sanitize-html";
 import { createMarkdown, prepareMarkdown, slugifyHeading, type Heading } from "@/lib/markdown";
 import type { CachedPage, CachedProject, NavItem } from "@/lib/types";
 import { readRepositoryFileHistory, type RepositoryDetails } from "@/lib/repository";
@@ -95,7 +96,11 @@ function publicPagePath(relativeFile: string, root: string): string {
 }
 
 function pageTitle(markdownSource: string, relativeFile: string): string {
-  const heading = markdownSource.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  const heading = markdownSource.match(/^#\s+(.+)$/m)?.[1]?.trim()
+    ?? markdownSource.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1]
+      ?.replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   if (heading) return heading.replace(/[`*_]/g, "");
   const basename = path.basename(relativeFile, ".md");
   return basename
@@ -108,6 +113,7 @@ function pageDescription(source: string): string {
     .replace(/^---[\s\S]*?---\s*/m, "")
     .replace(/^#{1,6}\s+.+$/gm, "")
     .replace(/```[\s\S]*?```/g, "")
+    .replace(/<[^>]+>/g, " ")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/&nbsp;/gi, " ")
     .replace(/[*_`>#-]/g, "")
@@ -123,8 +129,68 @@ function configureMarkdown(
   routeBase: string,
   pagePaths: Map<string, string>,
   headings: Heading[],
+  assetSource: "docs" | "repository",
 ): void {
   const usedHeadings = new Map<string, number>();
+  const publicAssetPath = (relativePath: string): string => {
+    const sourcePrefix = assetSource === "repository" ? "_root/" : "";
+    return `/repository-assets/${projectSlug}/${sourcePrefix}${relativePath}`;
+  };
+  const rewriteLink = (href: string): string => {
+    const [target, hash = ""] = href.split("#", 2);
+    if (!target || /^[a-z][a-z\d+.-]*:/i.test(target) || target.startsWith("/")) return href;
+    const resolved = path.posix.normalize(
+      path.posix.join(path.posix.dirname(currentFile), decodeURIComponent(target)),
+    );
+    const pagePath = pagePaths.get(resolved);
+    if (pagePath !== undefined) {
+      return `${routeBase}${pagePath ? `/${pagePath}` : ""}/${hash ? `#${hash}` : ""}`;
+    }
+    return resolved.startsWith("../") ? href : `${publicAssetPath(resolved)}${hash ? `#${hash}` : ""}`;
+  };
+  const rewriteImage = (source: string): string => {
+    if (/^[a-z][a-z\d+.-]*:/i.test(source) || source.startsWith("/")) return source;
+    const resolved = path.posix.normalize(
+      path.posix.join(path.posix.dirname(currentFile), decodeURIComponent(source)),
+    );
+    return resolved.startsWith("../") ? source : publicAssetPath(resolved);
+  };
+  const sanitize = (html: string): string => sanitizeHtml(html, {
+    allowedTags: [...sanitizeHtml.defaults.allowedTags, "img"],
+    allowedAttributes: {
+      a: ["href", "name", "target", "rel"],
+      img: ["src", "alt", "title", "width", "height", "loading"],
+      p: [{ name: "align", values: ["left", "center", "right"] }],
+      div: [{ name: "align", values: ["left", "center", "right"] }],
+      h1: [{ name: "align", values: ["left", "center", "right"] }],
+      h2: [{ name: "align", values: ["left", "center", "right"] }],
+      h3: [{ name: "align", values: ["left", "center", "right"] }],
+      h4: [{ name: "align", values: ["left", "center", "right"] }],
+      h5: [{ name: "align", values: ["left", "center", "right"] }],
+      h6: [{ name: "align", values: ["left", "center", "right"] }],
+    },
+    transformTags: {
+      a: (tagName, attributes) => {
+        const href = attributes.href ? rewriteLink(attributes.href) : undefined;
+        const external = href ? /^https?:\/\//i.test(href) : false;
+        return {
+          tagName,
+          attribs: {
+            ...attributes,
+            ...(href ? { href } : {}),
+            ...(external ? { target: "_blank", rel: "noreferrer noopener" } : {}),
+          },
+        };
+      },
+      img: (tagName, attributes) => ({
+        tagName,
+        attribs: {
+          ...attributes,
+          ...(attributes.src ? { src: rewriteImage(attributes.src) } : {}),
+        },
+      }),
+    },
+  });
   markdown.renderer.rules.heading_open = (tokens, index, options, env, renderer) => {
     const next = tokens[index + 1];
     const text = next?.content ?? "Section";
@@ -139,19 +205,8 @@ function configureMarkdown(
     const hrefIndex = token.attrIndex("href");
     if (hrefIndex >= 0) {
       const href = String(token.attrs![hrefIndex][1]);
-      const [target, hash = ""] = href.split("#", 2);
-      if (target && !/^[a-z][a-z\d+.-]*:/i.test(target) && !target.startsWith("/")) {
-        const decoded = decodeURIComponent(target);
-        const resolved = path.posix.normalize(
-          path.posix.join(path.posix.dirname(currentFile), decoded),
-        );
-        const pagePath = pagePaths.get(resolved);
-        if (pagePath !== undefined) {
-          token.attrs![hrefIndex][1] = `${routeBase}${pagePath ? `/${pagePath}` : ""}/${hash ? `#${hash}` : ""}`;
-        } else if (!resolved.startsWith("../")) {
-          token.attrs![hrefIndex][1] = `/repository-assets/${projectSlug}/${resolved}${hash ? `#${hash}` : ""}`;
-        }
-      } else if (/^https?:\/\//i.test(href)) {
+      token.attrs![hrefIndex][1] = rewriteLink(href);
+      if (/^https?:\/\//i.test(href)) {
         token.attrSet("target", "_blank");
         token.attrSet("rel", "noreferrer noopener");
       }
@@ -164,17 +219,12 @@ function configureMarkdown(
     const sourceIndex = token.attrIndex("src");
     if (sourceIndex >= 0) {
       const source = String(token.attrs![sourceIndex][1]);
-      if (!/^[a-z][a-z\d+.-]*:/i.test(source) && !source.startsWith("/")) {
-        const resolved = path.posix.normalize(
-          path.posix.join(path.posix.dirname(currentFile), decodeURIComponent(source)),
-        );
-        if (!resolved.startsWith("../")) {
-          token.attrs![sourceIndex][1] = `/repository-assets/${projectSlug}/${resolved}`;
-        }
-      }
+      token.attrs![sourceIndex][1] = rewriteImage(source);
     }
     return renderer.renderToken(tokens, index, options);
   };
+  markdown.renderer.rules.html_block = (tokens, index) => sanitize(tokens[index].content);
+  markdown.renderer.rules.html_inline = (tokens, index) => sanitize(tokens[index].content);
 }
 
 async function findMarkdownFiles(directory: string, prefix = ""): Promise<string[]> {
@@ -419,14 +469,14 @@ export async function buildDocumentation(
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")}</code></pre>`;
-  });
+  }, true);
   for (const file of files) {
     const source = await readFile(path.join(docsDirectory, file), "utf8");
     const history = await readRepositoryFileHistory(repositoryDirectory, path.posix.join("docs", file));
     const preparedSource = prepareMarkdown(source);
     const title = pageTitle(source, file);
     const headings: Heading[] = [];
-    configureMarkdown(markdown, file, repository.slug, routeBase, pagePaths, headings);
+    configureMarkdown(markdown, file, repository.slug, routeBase, pagePaths, headings, "docs");
     const pagePath = routePaths.get(file)!;
     titles.set(file, title);
     pages[pagePath] = {
@@ -461,7 +511,7 @@ export async function buildDocumentation(
     const headings: Heading[] = [];
     const rootPagePaths = new Map(pagePaths);
     for (const [file, pagePath] of pagePaths) rootPagePaths.set(path.posix.join("docs", file), pagePath);
-    configureMarkdown(markdown, "README.md", repository.slug, routeBase, rootPagePaths, headings);
+    configureMarkdown(markdown, "README.md", repository.slug, routeBase, rootPagePaths, headings, "repository");
     pages[""] = {
       path: "",
       sourcePath: "README.md",

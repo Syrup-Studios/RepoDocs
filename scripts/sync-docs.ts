@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { buildDocumentation, MissingDocumentationError } from "@/lib/docs";
 import { renderMarkdown } from "@/lib/markdown";
@@ -41,6 +41,33 @@ async function copyDocumentationAssets(source: string, destination: string): Pro
   }));
 }
 
+async function copyRootReadmeAssets(
+  repositoryDirectory: string,
+  destination: string,
+  project: CachedProject,
+): Promise<void> {
+  const landingPage = project.pages[project.defaultPage];
+  if (landingPage?.sourcePath !== "README.md") return;
+
+  const publicPrefix = `/repository-assets/${project.slug}/_root/`;
+  const imageSources = [...landingPage.html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gi)]
+    .map((match) => match[1])
+    .filter((source) => source.startsWith(publicPrefix));
+  const repositoryRoot = await realpath(repositoryDirectory);
+  await Promise.all([...new Set(imageSources)].map(async (source) => {
+    const relativePath = decodeURIComponent(new URL(source, "https://repodocs.invalid").pathname.slice(publicPrefix.length));
+    const sourceFile = await realpath(path.resolve(repositoryDirectory, relativePath));
+    if (sourceFile !== repositoryRoot && !sourceFile.startsWith(`${repositoryRoot}${path.sep}`)) {
+      throw new Error(`Root README asset points outside the repository: ${relativePath}`);
+    }
+    const sourceStats = await stat(sourceFile);
+    if (!sourceStats.isFile()) throw new Error(`Root README asset is not a regular file: ${relativePath}`);
+    const destinationFile = path.join(destination, "_root", relativePath);
+    await mkdir(path.dirname(destinationFile), { recursive: true });
+    await copyFile(sourceFile, destinationFile);
+  }));
+}
+
 async function syncSource(
   source: Awaited<ReturnType<typeof loadRepositorySources>>[number],
 ): Promise<CachedProject | null> {
@@ -68,10 +95,9 @@ async function syncSource(
     }
     throw error;
   }
-  await copyDocumentationAssets(
-    path.join(synced.directory, "docs"),
-    path.join(assetsDirectory, source.slug),
-  );
+  const projectAssetsDirectory = path.join(assetsDirectory, source.slug);
+  await copyDocumentationAssets(path.join(synced.directory, "docs"), projectAssetsDirectory);
+  await copyRootReadmeAssets(synced.directory, projectAssetsDirectory, project);
   process.stdout.write(`Synced ${source.name}: ${Object.keys(project.pages).length} pages.\n`);
   return project;
 }

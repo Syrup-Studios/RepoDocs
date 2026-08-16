@@ -33,7 +33,7 @@ docs/
     └── example.png
 ```
 
-Relative links between Markdown files become site links. Other files under `docs/`, such as images and downloads, are copied with the same directory structure.
+Relative links between Markdown files become site links. Other files under `docs/`, such as images and downloads, are copied with the same directory structure. Safe HTML is rendered, while unsafe elements and attributes are removed. Images referenced by an enabled root README are copied from the repository and receive working site URLs.
 
 ## Organize navigation
 

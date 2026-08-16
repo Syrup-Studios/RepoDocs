@@ -154,7 +154,9 @@ Other type and category values create matching directory pages. Minecraft has a 
 
 ## Write documentation
 
-RepoDocs uses Markdown-it to render `.md` files. It supports standard Markdown features such as headings, lists, links, images, block quotes, tables, and fenced code blocks. Code fences get syntax highlighting when the language is known.
+RepoDocs uses Markdown-it to render `.md` files. It supports standard Markdown features such as headings, lists, links, images, block quotes, tables, and fenced code blocks. Code fences get syntax highlighting when the language is known. Safe HTML elements are supported. Unsafe elements, event handlers, and attributes are removed.
+
+Images can use relative paths. Assets under `docs/` are copied with the documentation. When `rootREADME` is enabled, images referenced by the root README are copied from the source repository and their URLs are rewritten automatically.
 
 The first level-one heading becomes the page title. If the page has no level-one heading, RepoDocs creates a title from the filename. Level-two and level-three headings appear in the page table of contents. Duplicate headings get unique anchors.
 

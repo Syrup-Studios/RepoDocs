@@ -4,9 +4,9 @@ export type Heading = { id: string; text: string; level: number };
 
 type Highlight = (code: string, language: string) => string;
 
-export function createMarkdown(highlight?: Highlight): InstanceType<typeof MarkdownIt> {
+export function createMarkdown(highlight?: Highlight, allowHtml = false): InstanceType<typeof MarkdownIt> {
   return new MarkdownIt({
-    html: false,
+    html: allowHtml,
     linkify: true,
     typographer: true,
     ...(highlight ? { highlight } : {}),

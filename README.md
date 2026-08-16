@@ -23,7 +23,12 @@ The development command syncs all configured repositories before it starts Vite.
 
 ## Documentation
 
-Read the [full RepoDocs guide](docs/index.md) for:
+Read the [full RepoDocs guide](docs/index.md).
+
+- Project owners put `repodocs.yml`, Markdown, navigation, and assets in their project's root `docs/` directory.
+- Site operators register each public repository in the RepoDocs website's `repositories/` directory.
+
+The guide covers:
 
 - Site and repository configuration.
 - Git branch versions and translated documentation.
@@ -47,7 +52,7 @@ The same guide appears at `/docs/` on the generated website.
 | `bun run preview` | Serve the completed production build. |
 | `bun run lint` | Check the project source with ESLint. |
 
-## How it builds
+## How the website builds
 
 ```text
 repositories/*.yml

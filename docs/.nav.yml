@@ -1,5 +1,5 @@
 nav:
   - Overview: index.md
-  - Repository configuration: repositories.md
+  - Add and configure a project: repositories.md
   - Writing documentation: authoring.md
   - Build and deployment: operations.md

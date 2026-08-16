@@ -2,6 +2,8 @@
 
 RepoDocs creates a complete static website during each production build.
 
+This page is for RepoDocs site operators. Project owners only need to keep their documentation in the source repository's root `docs/` directory.
+
 ## Commands
 
 | Command | Result |
@@ -71,6 +73,6 @@ The site uses root-relative links. Host it at the root of its configured domain.
 ## Current limits
 
 - Only public repositories are supported. RepoDocs does not support authentication or private repositories.
-- Repository configuration files must use the `.yml` extension and must be direct children of `repositories/`.
+- Site registration files must use the `.yml` extension and must be direct children of the RepoDocs website's `repositories/` directory.
 - Source documentation must be in a root `docs/` directory.
 - Documentation updates need a new RepoDocs build and deployment.

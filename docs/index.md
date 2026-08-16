@@ -4,7 +4,16 @@ RepoDocs collects Markdown from public Git repositories and builds one versioned
 
 The published site does not need a database, a server process, or access to Git. Run a new build to publish changes from the source repositories.
 
-## How RepoDocs works
+## Start here
+
+Choose the guide for your role:
+
+- **Project owner:** Put Markdown and `repodocs.yml` inside the root `docs/` directory of your project repository. Start with [Add and configure a project](repositories.md), then read [Writing documentation](authoring.md).
+- **Site operator:** Register public repositories in the RepoDocs website's `repositories/` directory. Build and deployment settings also belong to the website repository. See [Build and deployment](operations.md).
+
+Project owners must not create a `repositories/` directory in their project. That directory is an internal input for the RepoDocs site operator.
+
+## How RepoDocs works for site operators
 
 A build has three main stages:
 
@@ -27,7 +36,7 @@ generated/docs.json + public/repository-assets/
 Vite build + prerender ──► dist/
 ```
 
-## Requirements and quick start
+## Run a RepoDocs website
 
 RepoDocs needs Bun 1.3 or newer, Git, and network access to its configured public repositories.
 
@@ -40,7 +49,7 @@ bun run dev
 
 `bun run dev` syncs all configured repositories before it starts Vite. Remote changes do not appear automatically while the server runs. Restart the command or run `bun run docs:sync` to pull them again.
 
-## Configure the site
+## Configure a RepoDocs website
 
 Edit `repodocs.config.ts` to set the site name, description, and source repository link:
 
@@ -60,7 +69,7 @@ The Markdown files in `docs/` are the source for this guide. The `docs/repodocs.
 
 ## Continue setup
 
-- [Configure repositories and versions](repositories.md).
+- [Add a project and configure documentation versions](repositories.md).
 - [Use one documentation package with ModdedMC](moddedmc-compatibility.md).
 - [Write and organize documentation](authoring.md).
 - [Build and deploy the site](operations.md).

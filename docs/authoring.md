@@ -2,6 +2,8 @@
 
 Each source repository owns its pages, navigation, and documentation assets.
 
+All paths in this page are inside the project repository. They are not paths in the RepoDocs website repository. Project owners do not need access to the server-side `repositories/` directory.
+
 ## Prepare the source repository
 
 The source repository must have a `docs/` directory at its root. A native RepoDocs package contains its Markdown pages directly in this directory. A shared ModdedMC V1 package uses a different layout under the same directory. See [ModdedMC compatibility](moddedmc-compatibility.md) for that layout.

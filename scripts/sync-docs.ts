@@ -55,6 +55,11 @@ async function syncSource(
       synced.directory,
       synced.revision,
       source.name,
+      {
+        documentationType: source.documentationType,
+        category: source.category,
+        useReadmeFrontPage: source.useReadmeFrontPage,
+      },
     );
   } catch (error) {
     if (error instanceof MissingDocumentationError) {

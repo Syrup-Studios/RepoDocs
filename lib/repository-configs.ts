@@ -5,6 +5,7 @@ import { parse as parseYaml } from "yaml";
 import type { RepositoryConfig, RepositorySource } from "@/lib/config";
 
 const validSlug = /^[a-z0-9][a-z0-9-]{0,62}$/;
+const validClassification = /^[a-z0-9][a-z0-9-]*$/;
 
 function validateRepositoryConfig(value: unknown, location: string): RepositoryConfig {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -21,11 +22,36 @@ function validateRepositoryConfig(value: unknown, location: string): RepositoryC
   if (typeof config.repository !== "string" || !config.repository.trim()) {
     throw new Error(`${location} must define a non-empty repository URL.`);
   }
+  if ((config.type === undefined) !== (config.category === undefined)) {
+    throw new Error(`${location} must define type and category together.`);
+  }
+  if (config.rootREADME !== undefined && typeof config.rootREADME !== "boolean") {
+    throw new Error(`${location} rootREADME must be true or false.`);
+  }
+
+  let documentationType: string | null = null;
+  let category: string | null = null;
+  if (config.type !== undefined && config.category !== undefined) {
+    if (typeof config.type !== "string" || typeof config.category !== "string") {
+      throw new Error(`${location} must define string values for type and category.`);
+    }
+    documentationType = config.type.trim().toLowerCase();
+    category = config.category.trim().toLowerCase();
+    if (!validClassification.test(documentationType) || !validClassification.test(category)) {
+      throw new Error(`${location} type and category must use lowercase letters, numbers, or hyphens.`);
+    }
+    if (documentationType === "minecraft" && category !== "mod" && category !== "modpack") {
+      throw new Error(`${location} must use category "mod" or "modpack" for Minecraft documentation.`);
+    }
+  }
 
   return {
     name: config.name.trim(),
     slug: config.slug,
     repository: config.repository.trim(),
+    documentationType,
+    category,
+    useReadmeFrontPage: config.rootREADME === true,
   };
 }
 

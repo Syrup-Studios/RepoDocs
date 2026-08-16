@@ -74,15 +74,23 @@ For example, create `repositories/my-project.yml`:
 name: My project
 slug: my-project
 repository: https://github.com/example/my-project
+type: minecraft
+category: mod
+rootREADME: true
 ```
 
-Each field is required:
+The first three fields are required. The classification fields are optional:
 
 | Field | Purpose |
 | --- | --- |
 | `name` | The project name shown on the website. |
 | `slug` | The stable project URL segment. Use 1 to 63 lowercase letters, numbers, or hyphens. The first character must be a letter or number. Each project must use a unique slug. |
 | `repository` | The public HTTPS URL of the Git repository. |
+| `type` | The optional default project type. It must be set together with `category`. |
+| `category` | The optional default project category. A Minecraft project must use `mod` or `modpack`. |
+| `rootREADME` | The optional default for using the root `README.md` as the project landing page. |
+
+The local documentation settings are defaults. Values in the source repository's `docs/repodocs.yml` replace matching local values. The source file cannot replace `name`, `slug`, or `repository`.
 
 RepoDocs scans all direct `.yml` files in `repositories/` during development and production builds. You do not need to update a central list.
 
@@ -122,7 +130,7 @@ If there is no root index page, RepoDocs uses the first page in the navigation a
 
 ## Project type and category
 
-A source repository can classify its documentation in `docs/repodocs.yml`:
+A source repository can configure its documentation in `docs/repodocs.yml`. Its values replace matching defaults in `repositories/*.yml`:
 
 ```yaml
 type: minecraft

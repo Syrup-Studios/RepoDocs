@@ -5,6 +5,12 @@ export type RepositorySource = {
   slug: string;
   /** Public HTTPS Git repository URL. */
   repository: string;
+  /** Default documentation type when the source repository does not set one. */
+  documentationType: string | null;
+  /** Default documentation category when the source repository does not set one. */
+  category: string | null;
+  /** Whether the root README is the default documentation page. */
+  useReadmeFrontPage: boolean;
 };
 
 export type RepositoryConfig = RepositorySource;

@@ -21,14 +21,17 @@ export class MissingDocumentationError extends Error {
   }
 }
 
-async function readProjectClassification(docsDirectory: string): Promise<ProjectClassification> {
+async function readProjectClassification(
+  docsDirectory: string,
+  defaults: ProjectClassification,
+): Promise<ProjectClassification> {
   const configurationFile = path.join(docsDirectory, "repodocs.yml");
   let stats: Awaited<ReturnType<typeof lstat>>;
   try {
     stats = await lstat(configurationFile);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return { documentationType: null, category: null, useReadmeFrontPage: false };
+      return defaults;
     }
     throw new Error("RepoDocs could not read docs/repodocs.yml.", { cause: error });
   }
@@ -58,7 +61,9 @@ async function readProjectClassification(docsDirectory: string): Promise<Project
   return {
     documentationType,
     category,
-    useReadmeFrontPage: parsed.rootREADME === true,
+    useReadmeFrontPage: parsed.rootREADME === undefined
+      ? defaults.useReadmeFrontPage
+      : parsed.rootREADME,
   };
 }
 
@@ -361,6 +366,11 @@ export async function buildDocumentation(
   repositoryDirectory: string,
   revision: string,
   displayName = repository.repository,
+  defaultClassification: ProjectClassification = {
+    documentationType: null,
+    category: null,
+    useReadmeFrontPage: false,
+  },
 ): Promise<CachedProject> {
   const docsDirectory = path.join(repositoryDirectory, "docs");
   let docsStats: Awaited<ReturnType<typeof lstat>>;
@@ -380,7 +390,7 @@ export async function buildDocumentation(
   if (!files.length) {
     throw new MissingDocumentationError("The docs/ directory does not contain Markdown files.");
   }
-  const projectConfiguration = await readProjectClassification(docsDirectory);
+  const projectConfiguration = await readProjectClassification(docsDirectory, defaultClassification);
   const { useReadmeFrontPage, ...classification } = projectConfiguration;
   const root = contentRoot(files);
   const routeBase = projectBasePath({ slug: repository.slug, ...classification });

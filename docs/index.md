@@ -12,9 +12,12 @@ Add a YAML file to the `repositories/` directory in RepoDocs. The file defines t
 name: My project
 slug: my-project
 repository: https://github.com/example/my-project
+type: minecraft
+category: mod
+rootREADME: true
 ```
 
-The slug uses lowercase letters, numbers, and hyphens. It stays the same if the repository name changes. Public repositories from GitHub, GitLab, Codeberg, and Bitbucket are supported.
+The slug uses lowercase letters, numbers, and hyphens. It stays the same if the repository name changes. Public repositories from GitHub, GitLab, Codeberg, and Bitbucket are supported. The optional `type` and `category` values classify the project. Set both values together. A Minecraft project must use `mod` or `modpack` as its category. The optional `rootREADME` value uses the repository's root `README.md` as the landing page.
 
 ## Write documentation
 
@@ -48,7 +51,7 @@ A navigation file can contain pages, named sections, nested lists, and `*` to in
 
 ## Classify the project
 
-An optional `docs/repodocs.yml` file puts a project in the correct directory. For example, use `type: minecraft` with `category: mod` or `category: modpack`. Set `rootREADME: true` to use the repository's root `README.md` as the project landing page. Projects without this file appear under General projects.
+An optional `docs/repodocs.yml` file puts a project in the correct directory. For example, use `type: minecraft` with `category: mod` or `category: modpack`. Its values replace matching documentation settings in the local `repositories/*.yml` file. It cannot replace the local name, slug, or repository URL. Set `rootREADME: true` to use the repository's root `README.md` as the project landing page. Projects without a local or source classification appear under General projects.
 
 ## Build the site
 

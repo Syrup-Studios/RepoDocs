@@ -25,6 +25,7 @@ export type CachedPage = RenderedDocumentation & {
 export type CachedProject = {
   slug: string;
   name: string;
+  favicon: string | null;
   repositoryUrl: string;
   repositoryHost: string;
   documentationType: string | null;

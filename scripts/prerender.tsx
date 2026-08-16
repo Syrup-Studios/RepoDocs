@@ -19,6 +19,12 @@ function render(pathname: string): string {
   return template
     .replace("<!--repodocs-title-->", escapeAttribute(metadata.title))
     .replace("<!--repodocs-description-->", escapeAttribute(metadata.description))
+    .replace(
+      "<!--repodocs-favicon-->",
+      metadata.favicon
+        ? `<link rel="icon" type="image/png" href="${escapeAttribute(metadata.favicon)}" data-repodocs-favicon />`
+        : "",
+    )
     .replace("<!--repodocs-content-->", renderToString(<App pathname={pathname} />));
 }
 

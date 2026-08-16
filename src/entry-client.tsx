@@ -39,6 +39,21 @@ function scrollToLocation(hash: string): void {
   document.getElementById(targetId)?.scrollIntoView();
 }
 
+function updateFavicon(href: string | null): void {
+  const existing = document.querySelector<HTMLLinkElement>("link[data-repodocs-favicon]");
+  if (!href) {
+    existing?.remove();
+    return;
+  }
+
+  const favicon = existing ?? document.createElement("link");
+  favicon.rel = "icon";
+  favicon.type = "image/png";
+  favicon.href = href;
+  favicon.dataset.repodocsFavicon = "";
+  if (!existing) document.head.append(favicon);
+}
+
 function ClientApplication() {
   const [location, setLocation] = useState(currentLocation);
   const initialRender = useRef(true);
@@ -77,6 +92,7 @@ function ClientApplication() {
     const metadata = pageMetadata(location.pathname);
     document.title = metadata.title;
     document.querySelector('meta[name="description"]')?.setAttribute("content", metadata.description);
+    updateFavicon(metadata.favicon);
 
     if (initialRender.current) {
       initialRender.current = false;

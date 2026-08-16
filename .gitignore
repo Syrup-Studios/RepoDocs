@@ -3,6 +3,7 @@ dist/
 .repodocs-cache/
 .repodocs-data/
 public/repository-assets/
+public/repository-favicons/
 generated/docs.json
 .env*
 !.env.example

@@ -568,6 +568,7 @@ export async function buildDocumentation(
   return {
     slug: repository.slug,
     name: displayName,
+    favicon: null,
     repositoryUrl: repository.normalizedUrl.replace(/\.git$/, ""),
     repositoryHost: repository.host,
     ...classification,

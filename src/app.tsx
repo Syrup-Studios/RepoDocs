@@ -69,13 +69,14 @@ export function resolvePage(pathname: string) {
   return { type: "documentation" as const, project, page, currentPath };
 }
 
-export function pageMetadata(pathname: string): { title: string; description: string } {
+export function pageMetadata(pathname: string): { title: string; description: string; favicon: string | null } {
   const resolved = resolvePage(pathname);
   if (resolved.type === "home") {
     if (resolved.selection.infoPage === "docs") {
       return {
         title: `How it works · ${config.site.name}`,
         description: `How ${config.site.name} builds static documentation from project repositories.`,
+        favicon: null,
       };
     }
     const directoryName = resolved.selection.general
@@ -84,15 +85,20 @@ export function pageMetadata(pathname: string): { title: string; description: st
     const title = directoryName
       ? `${directoryName.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())} · ${config.site.name}`
       : config.site.name;
-    return { title, description: config.site.description };
+    return { title, description: config.site.description, favicon: null };
   }
   if (resolved.type === "documentation") {
     return {
       title: `${resolved.page.title} · ${resolved.project.name} · ${config.site.name}`,
       description: resolved.page.description,
+      favicon: resolved.project.favicon,
     };
   }
-  return { title: `Page not found · ${config.site.name}`, description: "This documentation page does not exist." };
+  return {
+    title: `Page not found · ${config.site.name}`,
+    description: "This documentation page does not exist.",
+    favicon: null,
+  };
 }
 
 export function App({ pathname }: { pathname: string }) {

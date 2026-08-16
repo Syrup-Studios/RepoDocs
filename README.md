@@ -152,6 +152,8 @@ Classification controls the directory and project routes:
 
 Other type and category values create matching directory pages. Minecraft has a dedicated category view with Mods and Modpacks tabs.
 
+For a Minecraft mod, RepoDocs also looks for `src/main/resources/assets/<mod-id>/icon.png`. It uses the first matching file as the favicon for all documentation pages of that mod. If the standard path does not contain an icon, RepoDocs checks the icon path in Fabric, Forge, and NeoForge metadata.
+
 ## Write documentation
 
 RepoDocs uses Markdown-it to render `.md` files. It supports standard Markdown features such as headings, lists, links, images, block quotes, tables, and fenced code blocks. Code fences get syntax highlighting when the language is known. Safe HTML elements are supported. Unsafe elements, event handlers, and attributes are removed.

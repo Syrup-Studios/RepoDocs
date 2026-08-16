@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, lstat, mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { buildDocumentation, MissingDocumentationError } from "@/lib/docs";
 import { renderMarkdown } from "@/lib/markdown";
@@ -10,6 +10,7 @@ const siteDocumentationPath = path.join("docs", "index.md");
 
 const generatedDirectory = path.join(process.cwd(), "generated");
 const assetsDirectory = path.join(process.cwd(), "public", "repository-assets");
+const faviconsDirectory = path.join(process.cwd(), "public", "repository-favicons");
 const defaultSyncConcurrency = 4;
 const maximumSyncConcurrency = 16;
 
@@ -68,6 +69,85 @@ async function copyRootReadmeAssets(
   }));
 }
 
+async function copyModFavicon(
+  repositoryDirectory: string,
+  project: CachedProject,
+): Promise<string | null> {
+  if (project.documentationType !== "minecraft" || project.category !== "mod") return null;
+
+  const resourcesPath = path.join(repositoryDirectory, "src", "main", "resources");
+  let resourcesRoot: string;
+  try {
+    resourcesRoot = await realpath(resourcesPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+
+  const repositoryRoot = await realpath(repositoryDirectory);
+  if (resourcesRoot !== repositoryRoot && !resourcesRoot.startsWith(`${repositoryRoot}${path.sep}`)) {
+    return null;
+  }
+
+  const candidates: string[] = [];
+  try {
+    const entries = await readdir(path.join(resourcesRoot, "assets"), { withFileTypes: true });
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (entry.isDirectory()) candidates.push(path.join("assets", entry.name, "icon.png"));
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+
+  const fabricMetadata = path.join(resourcesRoot, "fabric.mod.json");
+  try {
+    const metadataStats = await lstat(fabricMetadata);
+    if (metadataStats.isFile() && !metadataStats.isSymbolicLink()) {
+      const metadata = JSON.parse(await readFile(fabricMetadata, "utf8")) as { icon?: unknown };
+      if (typeof metadata.icon === "string") candidates.push(metadata.icon);
+      else if (metadata.icon && typeof metadata.icon === "object" && !Array.isArray(metadata.icon)) {
+        candidates.push(...Object.values(metadata.icon).filter((value): value is string => typeof value === "string"));
+      }
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
+  }
+
+  for (const metadataName of ["mods.toml", "neoforge.mods.toml"]) {
+    const metadataPath = path.join(resourcesRoot, "META-INF", metadataName);
+    try {
+      const metadataStats = await lstat(metadataPath);
+      if (!metadataStats.isFile() || metadataStats.isSymbolicLink()) continue;
+      const metadata = await readFile(metadataPath, "utf8");
+      for (const match of metadata.matchAll(/^\s*logoFile\s*=\s*["']([^"']+)["']/gm)) {
+        candidates.push(match[1]);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+
+  for (const candidate of [...new Set(candidates)]) {
+    const iconPath = path.resolve(resourcesRoot, candidate);
+    if (iconPath !== resourcesRoot && !iconPath.startsWith(`${resourcesRoot}${path.sep}`)) continue;
+    let iconStats: Awaited<ReturnType<typeof lstat>>;
+    try {
+      iconStats = await lstat(iconPath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw error;
+    }
+    if (!iconStats.isFile() || iconStats.isSymbolicLink()) continue;
+    const resolvedIcon = await realpath(iconPath);
+    if (resolvedIcon !== resourcesRoot && !resolvedIcon.startsWith(`${resourcesRoot}${path.sep}`)) continue;
+
+    await mkdir(faviconsDirectory, { recursive: true });
+    await copyFile(resolvedIcon, path.join(faviconsDirectory, `${project.slug}.png`));
+    return `/repository-favicons/${project.slug}.png`;
+  }
+  return null;
+}
+
 async function syncSource(
   source: Awaited<ReturnType<typeof loadRepositorySources>>[number],
 ): Promise<CachedProject | null> {
@@ -98,6 +178,7 @@ async function syncSource(
   const projectAssetsDirectory = path.join(assetsDirectory, source.slug);
   await copyDocumentationAssets(path.join(synced.directory, "docs"), projectAssetsDirectory);
   await copyRootReadmeAssets(synced.directory, projectAssetsDirectory, project);
+  project.favicon = await copyModFavicon(synced.directory, project);
   process.stdout.write(`Synced ${source.name}: ${Object.keys(project.pages).length} pages.\n`);
   return project;
 }
@@ -105,7 +186,9 @@ async function syncSource(
 async function main(): Promise<void> {
   const sources = await loadRepositorySources();
   await rm(assetsDirectory, { recursive: true, force: true });
+  await rm(faviconsDirectory, { recursive: true, force: true });
   await mkdir(assetsDirectory, { recursive: true });
+  await mkdir(faviconsDirectory, { recursive: true });
 
   const concurrency = syncConcurrency(sources.length);
   const synchronizedProjects = new Array<CachedProject | null>(sources.length);

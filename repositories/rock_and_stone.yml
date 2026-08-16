@@ -1,3 +1,6 @@
 name: Rock And Stone
 slug: rock-and-stone
 repository: https://github.com/RasaNovum/Rock_And_Stone
+type: minecraft
+category: mod
+rootREADME: true

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { CalendarPlus, History, UserRound } from "lucide-react";
 import type { RenderedDocumentation } from "@/lib/types";
 
@@ -34,12 +34,18 @@ function localDate(value: string): string {
 
 function LocalDateTitle({ label, value, children }: { label: string; value: string; children: ReactNode }) {
   const [title, setTitle] = useState(`${label} ${new Date(value).toISOString()}`);
+  const tooltipId = useId();
 
   useEffect(() => {
     setTitle(`${label} ${localDate(value)}`);
   }, [label, value]);
 
-  return <span title={title}>{children}</span>;
+  return (
+    <span className="history-tooltip" aria-describedby={tooltipId} tabIndex={0}>
+      {children}
+      <span className="history-tooltip-content" id={tooltipId} role="tooltip">{title}</span>
+    </span>
+  );
 }
 
 export function DocumentationContent({

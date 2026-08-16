@@ -6,16 +6,44 @@ import { parse as parseYaml } from "yaml";
 import sanitizeHtml from "sanitize-html";
 import { createMarkdown, prepareMarkdown, slugifyHeading, type Heading } from "@/lib/markdown";
 import { parseFooterLinks } from "@/lib/footer";
+import { parsePlatforms, parseVersions } from "@/lib/repository-configs";
 import type { CachedPage, CachedProject, DocumentHistory, NavItem, RepositoryFooterLink } from "@/lib/types";
 import { readRepositoryFileHistory, type RepositoryDetails } from "@/lib/repository";
-import { projectBasePath } from "@/lib/routes";
 
-type ProjectClassification = {
+export type ProjectConfiguration = {
+  id: string;
   documentationType: string | null;
   category: string | null;
+  platforms: CachedProject["platforms"];
   useReadmeFrontPage: boolean;
   footerLinks: RepositoryFooterLink[];
+  versions: Record<string, string>;
+  defaultLocale: string;
 };
+
+export type DocumentationBuildOptions = {
+  assetBasePath?: string;
+  configuration?: ProjectConfiguration;
+  docsRelativeDirectory?: string;
+  includeRootReadme?: boolean;
+  locale?: string;
+  versionBranch?: string;
+  versionId?: string;
+};
+
+const validLocale = /^[a-z]{2}(?:[_-][a-z0-9]{2,8})?$/;
+const validProjectId = /^[a-z][a-z0-9-]{0,62}$/;
+const projectConfigurationKeys = new Set([
+  "schema",
+  "id",
+  "platforms",
+  "type",
+  "category",
+  "rootREADME",
+  "defaultLocale",
+  "versions",
+  "footer",
+]);
 
 export class MissingDocumentationError extends Error {
   constructor(message: string) {
@@ -24,10 +52,10 @@ export class MissingDocumentationError extends Error {
   }
 }
 
-async function readProjectClassification(
+export async function readProjectConfiguration(
   docsDirectory: string,
-  defaults: ProjectClassification,
-): Promise<ProjectClassification> {
+  defaults: ProjectConfiguration,
+): Promise<ProjectConfiguration> {
   const configurationFile = path.join(docsDirectory, "repodocs.yml");
   let stats: Awaited<ReturnType<typeof lstat>>;
   try {
@@ -46,11 +74,37 @@ async function readProjectClassification(
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("docs/repodocs.yml must contain a YAML object.");
   }
+  if (parsed.schema === undefined) {
+    process.stderr.write(`Ignored ${configurationFile}: missing numeric schema: 1.\n`);
+    return defaults;
+  }
+  if (parsed.schema !== 1) {
+    throw new Error("docs/repodocs.yml must use the numeric value schema: 1.");
+  }
+  if (typeof parsed.id !== "string" || !validProjectId.test(parsed.id)) {
+    throw new Error("id in docs/repodocs.yml must start with a lowercase letter and use only lowercase letters, numbers, or hyphens.");
+  }
+  if (parsed.id !== defaults.id) {
+    throw new Error(`Project ID "${parsed.id}" does not match the registered ID "${defaults.id}".`);
+  }
+  for (const key of Object.keys(parsed)) {
+    if (!projectConfigurationKeys.has(key)) throw new Error(`Unknown field in docs/repodocs.yml: ${key}`);
+  }
   if ((parsed.type === undefined) !== (parsed.category === undefined)) {
     throw new Error("docs/repodocs.yml must define type and category together.");
   }
   if (parsed.rootREADME !== undefined && typeof parsed.rootREADME !== "boolean") {
     throw new Error("rootREADME in docs/repodocs.yml must be true or false.");
+  }
+  const versions = parsed.versions === undefined
+    ? defaults.versions
+    : parseVersions(parsed.versions, "docs/repodocs.yml");
+  const platforms = parsed.platforms === undefined
+    ? defaults.platforms
+    : parsePlatforms(parsed.platforms, "docs/repodocs.yml");
+  const rawDefaultLocale = parsed.defaultLocale ?? defaults.defaultLocale;
+  if (typeof rawDefaultLocale !== "string" || !validLocale.test(rawDefaultLocale.toLowerCase())) {
+    throw new Error('defaultLocale in docs/repodocs.yml must be a language code such as "en" or "pt-br".');
   }
 
   let documentationType = defaults.documentationType;
@@ -69,14 +123,18 @@ async function readProjectClassification(
     }
   }
   return {
+    id: parsed.id,
     documentationType,
     category,
+    platforms,
     useReadmeFrontPage: parsed.rootREADME === undefined
       ? defaults.useReadmeFrontPage
       : parsed.rootREADME,
     footerLinks: parsed.footer === undefined
       ? defaults.footerLinks
       : parseFooterLinks(parsed.footer, "footer in docs/repodocs.yml"),
+    versions,
+    defaultLocale: rawDefaultLocale.toLowerCase().replaceAll("_", "-"),
   };
 }
 
@@ -126,6 +184,7 @@ function pageDescription(source: string): string {
     .replace(/^#{1,6}\s+.+$/gm, "")
     .replace(/```[\s\S]*?```/g, "")
     .replace(/<[^>]+>/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, " ")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/&nbsp;/gi, " ")
     .replace(/[*_`>#-]/g, "")
@@ -137,16 +196,16 @@ function pageDescription(source: string): string {
 function configureMarkdown(
   markdown: InstanceType<typeof MarkdownIt>,
   currentFile: string,
-  projectSlug: string,
   routeBase: string,
   pagePaths: Map<string, string>,
   headings: Heading[],
   assetSource: "docs" | "repository",
+  assetBasePath: string,
 ): void {
   const usedHeadings = new Map<string, number>();
   const publicAssetPath = (relativePath: string): string => {
     const sourcePrefix = assetSource === "repository" ? "_root/" : "";
-    return `/repository-assets/${projectSlug}/${sourcePrefix}${relativePath}`;
+    return `${assetBasePath}/${sourcePrefix}${relativePath}`;
   };
   const rewriteLink = (href: string): string => {
     const [target, hash = ""] = href.split("#", 2);
@@ -239,13 +298,18 @@ function configureMarkdown(
   markdown.renderer.rules.html_inline = (tokens, index) => sanitize(tokens[index].content);
 }
 
-async function findMarkdownFiles(directory: string, prefix = ""): Promise<string[]> {
+async function findMarkdownFiles(
+  directory: string,
+  prefix = "",
+  excludedRootDirectories = new Set<string>(),
+): Promise<string[]> {
   const entries = await readdir(path.join(directory, prefix), { withFileTypes: true });
   const results: string[] = [];
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (entry.name.startsWith(".")) continue;
+    if (!prefix && entry.isDirectory() && excludedRootDirectories.has(entry.name)) continue;
     const relative = path.posix.join(prefix, entry.name);
-    if (entry.isDirectory()) results.push(...(await findMarkdownFiles(directory, relative)));
+    if (entry.isDirectory()) results.push(...(await findMarkdownFiles(directory, relative, excludedRootDirectories)));
     else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) results.push(relative);
   }
   return results;
@@ -423,21 +487,33 @@ function firstPage(items: NavItem[]): string | null {
   return null;
 }
 
+function navigationContainsPage(items: NavItem[], pagePath: string): boolean {
+  return items.some((item) => item.type === "page"
+    ? item.path === pagePath
+    : navigationContainsPage(item.children, pagePath));
+}
+
 export async function buildDocumentation(
   repository: RepositoryDetails,
   repositoryDirectory: string,
   revision: string,
   displayName = repository.repository,
-  defaultClassification: ProjectClassification = {
+  defaultClassification: ProjectConfiguration = {
+    id: repository.slug,
     documentationType: null,
     category: null,
+    platforms: {},
     useReadmeFrontPage: false,
     footerLinks: [],
+    versions: {},
+    defaultLocale: "en",
   },
-  routeBaseOverride?: string,
+  routeBase: string,
   historyFallback?: (sourcePath: string) => Promise<DocumentHistory>,
+  options: DocumentationBuildOptions = {},
 ): Promise<CachedProject> {
-  const docsDirectory = path.join(repositoryDirectory, "docs");
+  const docsRelativeDirectory = options.docsRelativeDirectory ?? "docs";
+  const docsDirectory = path.join(repositoryDirectory, docsRelativeDirectory);
   let docsStats: Awaited<ReturnType<typeof lstat>>;
   try {
     docsStats = await lstat(docsDirectory);
@@ -451,15 +527,25 @@ export async function buildDocumentation(
     throw new MissingDocumentationError("This repository does not have a valid root docs/ directory.");
   }
 
-  const files = await findMarkdownFiles(docsDirectory);
+  const files = await findMarkdownFiles(
+    docsDirectory,
+    "",
+    docsRelativeDirectory === "docs" ? new Set(["translations"]) : new Set(),
+  );
   if (!files.length) {
     throw new MissingDocumentationError("The docs/ directory does not contain Markdown files.");
   }
-  const projectConfiguration = await readProjectClassification(docsDirectory, defaultClassification);
-  const { useReadmeFrontPage, ...projectSettings } = projectConfiguration;
+  const configurationDirectory = path.join(repositoryDirectory, "docs");
+  const projectConfiguration = options.configuration
+    ?? await readProjectConfiguration(configurationDirectory, defaultClassification);
+  const { useReadmeFrontPage, defaultLocale } = projectConfiguration;
+  const projectSettings = {
+    documentationType: projectConfiguration.documentationType,
+    category: projectConfiguration.category,
+    platforms: projectConfiguration.platforms,
+    footerLinks: projectConfiguration.footerLinks,
+  };
   const root = contentRoot(files);
-  const routeBase = routeBaseOverride ?? projectBasePath({ slug: repository.slug, ...projectSettings });
-
   const readHistory = async (sourcePath: string): Promise<DocumentHistory> => {
     try {
       return await readRepositoryFileHistory(repositoryDirectory, sourcePath);
@@ -496,16 +582,25 @@ export async function buildDocumentation(
   }, true);
   for (const file of files) {
     const source = await readFile(path.join(docsDirectory, file), "utf8");
-    const history = await readHistory(path.posix.join("docs", file));
+    const sourcePath = path.posix.join(docsRelativeDirectory, file);
+    const history = await readHistory(sourcePath);
     const preparedSource = prepareMarkdown(source);
     const title = pageTitle(source, file);
     const headings: Heading[] = [];
-    configureMarkdown(markdown, file, repository.slug, routeBase, pagePaths, headings, "docs");
+    configureMarkdown(
+      markdown,
+      file,
+      routeBase,
+      pagePaths,
+      headings,
+      "docs",
+      options.assetBasePath ?? `/repository-assets/${repository.slug}`,
+    );
     const pagePath = routePaths.get(file)!;
     titles.set(file, title);
     pages[pagePath] = {
       path: pagePath,
-      sourcePath: path.posix.join("docs", file),
+      sourcePath,
       title,
       description: pageDescription(preparedSource),
       html: markdown.render(preparedSource),
@@ -514,7 +609,7 @@ export async function buildDocumentation(
     };
   }
 
-  if (useReadmeFrontPage) {
+  if (useReadmeFrontPage && options.includeRootReadme !== false && docsRelativeDirectory === "docs") {
     const readmeFile = path.join(repositoryDirectory, "README.md");
     let readmeStats: Awaited<ReturnType<typeof lstat>>;
     try {
@@ -535,7 +630,15 @@ export async function buildDocumentation(
     const headings: Heading[] = [];
     const rootPagePaths = new Map(pagePaths);
     for (const [file, pagePath] of pagePaths) rootPagePaths.set(path.posix.join("docs", file), pagePath);
-    configureMarkdown(markdown, "README.md", repository.slug, routeBase, rootPagePaths, headings, "repository");
+    configureMarkdown(
+      markdown,
+      "README.md",
+      routeBase,
+      rootPagePaths,
+      headings,
+      "repository",
+      options.assetBasePath ?? `/repository-assets/${repository.slug}`,
+    );
     pages[""] = {
       path: "",
       sourcePath: "README.md",
@@ -548,21 +651,13 @@ export async function buildDocumentation(
   }
 
   let navigation: NavItem[];
-  const candidates = [
-    path.join(repositoryDirectory, ".nav.yml"),
-    path.join(docsDirectory, ".nav.yml"),
-  ];
+  const navCandidate = path.join(docsDirectory, ".nav.yml");
   let navFile: string | null = null;
-  for (const candidate of candidates) {
-    try {
-      const candidateStats = await lstat(candidate);
-      if (candidateStats.isFile() && !candidateStats.isSymbolicLink()) {
-        navFile = candidate;
-        break;
-      }
-    } catch {
-      continue;
-    }
+  try {
+    const candidateStats = await lstat(navCandidate);
+    if (candidateStats.isFile() && !candidateStats.isSymbolicLink()) navFile = navCandidate;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 
   if (navFile) {
@@ -586,9 +681,24 @@ export async function buildDocumentation(
     });
   }
 
+  const rootReadme = pages[""]?.sourcePath === "README.md" ? pages[""] : null;
+  if (rootReadme && !navigationContainsPage(navigation, "")) {
+    navigation.unshift({ type: "page", title: rootReadme.title, path: "" });
+  }
+
   const defaultPage = pages[""] ? "" : firstPage(navigation);
   if (defaultPage === null) throw new Error("The navigation does not contain a page.");
 
+  const versionId = options.versionId ?? "latest";
+  const locale = options.locale ?? defaultLocale;
+  const builtAt = new Date().toISOString();
+  const localeDocumentation = {
+    code: locale,
+    label: localeLabel(locale),
+    defaultPage,
+    navigation,
+    pages,
+  };
   return {
     slug: repository.slug,
     name: displayName,
@@ -596,10 +706,29 @@ export async function buildDocumentation(
     repositoryUrl: repository.normalizedUrl.replace(/\.git$/, ""),
     repositoryHost: repository.host,
     ...projectSettings,
-    defaultPage,
-    navigation,
-    pages,
-    sourceRevision: revision,
-    builtAt: new Date().toISOString(),
+    defaultVersion: versionId,
+    defaultLocale,
+    versions: {
+      [versionId]: {
+        id: versionId,
+        label: versionLabel(versionId),
+        branch: options.versionBranch ?? "default",
+        sourceRevision: revision,
+        builtAt,
+        locales: { [locale]: localeDocumentation },
+      },
+    },
   };
+}
+
+export function localeLabel(locale: string): string {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "language" }).of(locale) ?? locale;
+  } catch {
+    return locale;
+  }
+}
+
+export function versionLabel(version: string): string {
+  return version === "latest" ? "Latest" : version;
 }

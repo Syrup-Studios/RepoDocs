@@ -10,7 +10,8 @@ import { GameDirectoryPage } from "@/components/game-directory-page";
 import { DocumentationContent } from "@/components/documentation-content";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { DocsNav } from "@/components/docs-nav";
-import { categorySegment, projectPageHref } from "@/lib/routes";
+import { categorySegment, projectOverviewHref } from "@/lib/routes";
+import { defaultDocumentationContext } from "@/lib/documentation-context";
 import { repositoryCommitHref, repositoryFileHref } from "@/lib/repository-links";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedProject, GeneratedDocumentation } from "@/lib/types";
@@ -31,21 +32,22 @@ function label(value: string): string {
 }
 
 function projectCard(project: CachedProject) {
+  const { version, locale } = defaultDocumentationContext(project);
   return (
     <article className="portal-project" key={project.slug}>
       <div className="project-icon">{project.name.slice(0, 1).toUpperCase()}</div>
       <div className="project-details">
         <h3>{project.name}</h3>
-        <p>{project.pages[project.defaultPage]?.description || "Project documentation from the source repository."}</p>
+        <p>{locale.pages[locale.defaultPage]?.description || "Project documentation from the source repository."}</p>
         <div className="project-meta">
-          <span><FileText size={14} /> {Object.keys(project.pages).length} pages</span>
-          <span><GitBranch size={14} /> {project.sourceRevision.slice(0, 7)}</span>
+          <span><FileText size={14} /> {Object.keys(locale.pages).length} pages</span>
+          <span><GitBranch size={14} /> {version.sourceRevision.slice(0, 7)}</span>
           {project.documentationType && project.category && <span className="project-kind">{label(project.documentationType)} · {label(project.category)}</span>}
         </div>
       </div>
       <div className="project-actions">
-        <a className="open-docs" href={projectPageHref(project, project.defaultPage)}>
-          Open docs <ArrowRight size={16} />
+        <a className="open-docs" href={projectOverviewHref(project)}>
+          Open project <ArrowRight size={16} />
         </a>
         <a href={project.repositoryUrl} target="_blank" rel="noreferrer" aria-label={`${project.name} repository`}>
           <Github size={17} /><ExternalLink size={12} />
@@ -57,8 +59,9 @@ function projectCard(project: CachedProject) {
 
 export default function HomePage({ documentation, selection, site }: { documentation: GeneratedDocumentation; selection: DirectorySelection; site: SiteConfig }) {
   const { projects, generatedAt, siteDocumentation: docsProject } = documentation;
-  const documentationPath = selection.documentationPath ?? docsProject.defaultPage;
-  const docsPage = docsProject.pages[documentationPath];
+  const { version: docsVersion, locale: docsLocale } = defaultDocumentationContext(docsProject);
+  const documentationPath = selection.documentationPath ?? docsLocale.defaultPage;
+  const docsPage = docsLocale.pages[documentationPath];
   const configuredTypes = [...new Set(projects.flatMap((project) => project.documentationType ? [project.documentationType] : []))];
   const documentationTypes = [...new Set(["minecraft", ...configuredTypes])];
   const generalProjects = projects.filter((project) => !project.documentationType || !project.category);
@@ -116,7 +119,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
         <aside className="docs-sidebar">
           <div className="game-sidebar-title">{showsHowItWorks ? "RepoDocs guide" : "Games"}</div>
           {showsHowItWorks ? (
-            <DocsNav items={docsProject.navigation} basePath="/docs" currentPath={documentationPath} />
+            <DocsNav items={docsLocale.navigation} basePath="/docs" currentPath={documentationPath} />
           ) : (
             <nav className="docs-nav" aria-label="Games">
               {documentationTypes.map((type) => (
@@ -130,10 +133,10 @@ export default function HomePage({ documentation, selection, site }: { documenta
         {showsHowItWorks ? (
           <DocumentationContent
             page={docsPage}
-            referenceDate={docsProject.builtAt}
+            referenceDate={docsVersion.builtAt}
             sourcePath={docsPage.sourcePath}
             commitRevision={docsPage.history.updatedRevision}
-            sourceHref={repositoryFileHref(site.repository, docsProject.sourceRevision, docsPage.sourcePath)}
+            sourceHref={repositoryFileHref(site.repository, docsVersion.sourceRevision, docsPage.sourcePath)}
             commitHref={repositoryCommitHref(site.repository, docsPage.history.updatedRevision)}
           />
         ) : (

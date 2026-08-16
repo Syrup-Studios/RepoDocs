@@ -16,9 +16,12 @@ my-project/
 │   │   └── configuration.md
 │   ├── images/
 │   │   └── example.png
+│   ├── translations/
+│   │   └── de/
+│   │       ├── index.md
+│   │       └── getting-started.md
 │   ├── .nav.yml
 │   └── repodocs.yml
-└── .nav.yml                 # optional alternative to docs/.nav.yml
 ```
 
 `index.md` or `README.md` becomes the page for its directory. Other Markdown filenames become route segments without the `.md` extension.
@@ -56,15 +59,37 @@ Use paths relative to the current Markdown file:
 ![Example](images/example.png)
 ```
 
-RepoDocs changes links to known Markdown files into documentation routes. Other relative links become repository asset URLs. It copies all non-Markdown files under `docs/` to `public/repository-assets/<project-slug>/` and keeps their directory structure.
+RepoDocs changes links to known Markdown files into documentation routes. Other relative links become repository asset URLs. It copies all non-Markdown files under `docs/` to `public/repository-assets/<project-slug>/<version>/` and keeps their directory structure.
 
 Links cannot escape the `docs/` directory. Absolute URLs stay external and open in a new browser tab.
+
+## Translate documentation
+
+Set `defaultLocale` in `docs/repodocs.yml` when the source language is not English. Put translated Markdown under `docs/translations/<locale>/`. Underscores and hyphens in locale directory names are normalized to hyphens.
+
+```text
+docs/
+├── index.md
+├── guide/
+│   └── setup.md
+└── translations/
+    ├── de/
+    │   ├── index.md
+    │   └── guide/
+    │       └── setup.md
+    └── pt_br/
+        └── index.md
+```
+
+A translation can contain only some pages. RepoDocs uses the default-language page when a translated page is missing. A translated `.nav.yml` is optional. The language selector lists every locale found on the selected version branch.
+
+Translation assets stay inside their locale directory. RepoDocs copies them with the other version assets and rewrites relative paths.
 
 ## Control navigation
 
 Navigation is optional. Without a navigation file, RepoDocs builds a tree from Markdown files and directories. Index and README pages appear first. Other entries follow in alphabetical order.
 
-Add `.nav.yml` at the repository root or at `docs/.nav.yml` to set the order and labels. A root `.nav.yml` has priority when both exist.
+Add `docs/.nav.yml` to set the order and labels.
 
 ```yaml
 nav:

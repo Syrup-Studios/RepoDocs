@@ -1,6 +1,6 @@
 # RepoDocs
 
-RepoDocs turns Markdown from public Git repositories into one static documentation website. Each source repository owns its documentation. RepoDocs collects that content during a build and prerenders every route as HTML.
+RepoDocs turns Markdown from public Git repositories into one versioned and localized documentation website. Each source repository owns its documentation. RepoDocs collects that content during a build and prerenders every route as HTML.
 
 The deployed site does not need a server, database, or runtime access to Git.
 
@@ -26,6 +26,8 @@ The development command syncs all configured repositories before it starts Vite.
 Read the [full RepoDocs guide](docs/index.md) for:
 
 - Site and repository configuration.
+- Git branch versions and translated documentation.
+- Versioned `docs/repodocs.yml` metadata with platform project IDs.
 - Source repository structure.
 - Project classification and repository-wide footers.
 - Markdown, asset, and navigation behavior.

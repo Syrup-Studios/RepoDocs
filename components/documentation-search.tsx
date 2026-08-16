@@ -11,6 +11,8 @@ type SearchEntry = {
   title: string;
   projectName: string;
   body: string;
+  locale: string;
+  version: string;
 };
 
 function plainText(html: string): string {
@@ -76,18 +78,22 @@ function searchScore(entry: SearchEntry, query: string, terms: string[]): number
 }
 
 function buildIndex(projects: CachedProject[]): SearchEntry[] {
-  return projects.flatMap((project) => Object.values(project.pages).map((page) => {
-    const body = plainText(page.html);
-    return {
-      project,
-      page,
-      href: projectPageHref(project, page.path),
-      title: normalize(page.title),
-      projectName: normalize(project.name),
-      text: normalize(`${page.title} ${project.name} ${page.description} ${body}`),
-      body,
-    };
-  }));
+  return projects.flatMap((project) => Object.values(project.versions).flatMap((version) =>
+    Object.values(version.locales).flatMap((locale) => Object.values(locale.pages).map((page) => {
+      const body = plainText(page.html);
+      return {
+        project,
+        page,
+        href: projectPageHref(project, page.path, version.id, locale.code),
+        title: normalize(page.title),
+        projectName: normalize(project.name),
+        text: normalize(`${page.title} ${project.name} ${version.label} ${locale.label} ${page.description} ${body}`),
+        body,
+        locale: locale.label,
+        version: version.label,
+      };
+    })),
+  ));
 }
 
 export function DocumentationSearch({ projects }: { projects: CachedProject[] }) {
@@ -175,8 +181,8 @@ export function DocumentationSearch({ projects }: { projects: CachedProject[] })
                   <p className="search-result-count">{results.length} result{results.length === 1 ? "" : "s"}</p>
                   <nav aria-label="Search results">
                     {results.map((entry) => (
-                      <a href={entry.href} onClick={() => setIsOpen(false)} key={`${entry.project.slug}:${entry.page.path}`}>
-                        <small><HighlightedText text={entry.project.name} terms={terms} /></small>
+                      <a href={entry.href} onClick={() => setIsOpen(false)} key={`${entry.project.slug}:${entry.version}:${entry.locale}:${entry.page.path}`}>
+                        <small><HighlightedText text={`${entry.project.name} · ${entry.version} · ${entry.locale}`} terms={terms} /></small>
                         <strong><HighlightedText text={entry.page.title} terms={terms} /></strong>
                         <p><HighlightedText text={resultExcerpt(entry, terms)} terms={terms} /></p>
                       </a>

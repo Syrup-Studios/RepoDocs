@@ -1,7 +1,7 @@
-type ClassifiedProject = {
+type RoutableProject = {
   slug: string;
-  documentationType: string | null;
-  category: string | null;
+  defaultLocale: string;
+  defaultVersion: string;
 };
 
 export function categorySegment(category: string | null): string | null {
@@ -10,11 +10,28 @@ export function categorySegment(category: string | null): string | null {
   return category;
 }
 
-export function projectBasePath(project: ClassifiedProject): string {
-  const category = project.documentationType === "minecraft" ? categorySegment(project.category) : null;
-  return category ? `/${category}/${project.slug}` : `/docs/${project.slug}`;
+export function projectOverviewHref(
+  project: RoutableProject,
+  locale = project.defaultLocale,
+  version = project.defaultVersion,
+): string {
+  return `/${locale}/project/${project.slug}/${version}/`;
 }
 
-export function projectPageHref(project: ClassifiedProject, pagePath: string): string {
-  return `${projectBasePath(project)}${pagePath ? `/${pagePath}` : ""}/`;
+export function projectDocumentationBasePath(
+  project: RoutableProject,
+  version = project.defaultVersion,
+  locale = project.defaultLocale,
+): string {
+  return `/${locale}/project/${project.slug}/${version}/docs`;
+}
+
+export function projectPageHref(
+  project: RoutableProject,
+  pagePath: string,
+  version = project.defaultVersion,
+  locale = project.defaultLocale,
+): string {
+  const base = projectDocumentationBasePath(project, version, locale);
+  return `${base}${pagePath ? `/${pagePath}` : ""}/`;
 }

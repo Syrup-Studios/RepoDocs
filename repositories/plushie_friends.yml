@@ -1,3 +1,6 @@
 name: Plushie Friends
 slug: plushie-friends
 repository: https://github.com/Syrup-Studios/plushie_friends
+type: minecraft
+category: mod
+rootREADME: true

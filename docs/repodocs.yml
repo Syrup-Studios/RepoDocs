@@ -1,0 +1,4 @@
+# yaml-language-server: $schema=../public/schemas/repodocs.schema.json
+schema: 1
+id: repodocs
+defaultLocale: en

@@ -1,5 +1,5 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
-import { CalendarPlus, History, UserRound } from "lucide-react";
+import { CalendarPlus, Flag, History, Pencil, UserRound } from "lucide-react";
 import type { RenderedDocumentation, RepositoryFooterLink } from "@/lib/types";
 
 function relativeDate(value: string, reference: string): string {
@@ -57,6 +57,8 @@ export function DocumentationContent({
   commitHref,
   repositoryName,
   repositoryFooter = [],
+  editHref,
+  reportHref,
 }: {
   page: RenderedDocumentation;
   referenceDate: string;
@@ -66,6 +68,8 @@ export function DocumentationContent({
   commitHref: string;
   repositoryName?: string;
   repositoryFooter?: RepositoryFooterLink[];
+  editHref?: string;
+  reportHref?: string;
 }) {
   return (
     <>
@@ -106,14 +110,20 @@ export function DocumentationContent({
         </footer>
       </main>
 
-      {page.headings.length > 0 && (
-        <aside className="page-toc">
-          <b>Table of contents</b>
-          {page.headings.map((heading) => (
-            <a className={heading.level === 3 ? "nested" : ""} href={`#${heading.id}`} key={heading.id}>{heading.text}</a>
-          ))}
-        </aside>
-      )}
+      <aside className="page-toc">
+        {page.headings.length > 0 && (
+          <>
+            <b>On this page</b>
+            {page.headings.map((heading) => (
+              <a className={heading.level === 3 ? "nested" : ""} href={`#${heading.id}`} key={heading.id}>{heading.text}</a>
+            ))}
+          </>
+        )}
+        <nav className="page-tools" aria-label="Page actions">
+          {editHref && <a href={editHref} target="_blank" rel="noreferrer"><Pencil size={14} /> Edit this page</a>}
+          {reportHref && <a href={reportHref} target="_blank" rel="noreferrer"><Flag size={14} /> Report page</a>}
+        </nav>
+      </aside>
     </>
   );
 }

@@ -1,6 +1,6 @@
 # RepoDocs guide
 
-RepoDocs collects Markdown from public Git repositories and builds one static documentation website. Each project keeps its documentation beside its code. The source repository stays authoritative.
+RepoDocs collects Markdown from public Git repositories and builds one versioned and localized documentation website. Each project keeps its documentation beside its code. The source repository stays authoritative.
 
 The published site does not need a database, a server process, or access to Git. Run a new build to publish changes from the source repositories.
 
@@ -8,8 +8,8 @@ The published site does not need a database, a server process, or access to Git.
 
 A build has three main stages:
 
-1. **Sync:** RepoDocs reads each YAML file in `repositories/`. It clones a new repository or fetches the latest commit into its local cache.
-2. **Compile:** RepoDocs reads the repository's root `docs/` directory. It converts Markdown to HTML, builds navigation, rewrites local links, copies assets, and reads page history from Git.
+1. **Sync:** RepoDocs reads each YAML file in `repositories/`. It clones a new repository or fetches every configured documentation branch into its local cache.
+2. **Compile:** RepoDocs reads the repository's root `docs/` directory on each branch. It converts Markdown to HTML, builds navigation, compiles translations, rewrites local links, copies versioned assets, and reads page history from Git.
 3. **Publish:** Vite builds the browser files. The prerender script writes an `index.html` file for every project, directory, documentation page, and the 404 page.
 
 The browser bundle adds client-side navigation and search. The main content is already in the generated HTML. A page remains useful before React starts.
@@ -56,10 +56,10 @@ const config = {
 
 These values appear in page titles, headers, metadata, and links on the generated site.
 
-The Markdown files in `docs/` are the source for this guide. The documentation sync renders them and creates the guide navigation.
+The Markdown files in `docs/` are the source for this guide. The `docs/repodocs.yml` file declares schema version 1 and the stable project ID. The documentation sync renders the pages and creates the guide navigation.
 
 ## Continue setup
 
-- [Configure repositories](repositories.md).
+- [Configure repositories and versions](repositories.md).
 - [Write and organize documentation](authoring.md).
 - [Build and deploy the site](operations.md).

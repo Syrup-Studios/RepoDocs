@@ -1,9 +1,30 @@
 import { copyFile, lstat, mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
+import type { Dirent } from "node:fs";
 import path from "node:path";
-import { buildDocumentation, MissingDocumentationError } from "@/lib/docs";
-import { parseRepositoryUrl, readRepositoryDefaultAuthor, readRepositoryRevision, syncRepository } from "@/lib/repository";
+import {
+  buildDocumentation,
+  localeLabel,
+  MissingDocumentationError,
+  readProjectConfiguration,
+  versionLabel,
+  type ProjectConfiguration,
+} from "@/lib/docs";
+import {
+  checkoutRepositoryBranch,
+  parseRepositoryUrl,
+  readRepositoryDefaultAuthor,
+  readRepositoryRevision,
+  syncRepository,
+} from "@/lib/repository";
 import { loadRepositorySources } from "@/lib/repository-configs";
-import type { CachedProject } from "@/lib/types";
+import { projectDocumentationBasePath } from "@/lib/routes";
+import type {
+  CachedDocumentationLocale,
+  CachedDocumentationVersion,
+  CachedPage,
+  CachedProject,
+  NavItem,
+} from "@/lib/types";
 import config from "@/repodocs.config";
 
 const generatedDirectory = path.join(process.cwd(), "generated");
@@ -43,18 +64,19 @@ async function copyDocumentationAssets(source: string, destination: string): Pro
 async function copyRootReadmeAssets(
   repositoryDirectory: string,
   destination: string,
-  project: CachedProject,
+  documentation: CachedDocumentationLocale,
+  publicPrefix: string,
 ): Promise<void> {
-  const landingPage = project.pages[project.defaultPage];
+  const landingPage = documentation.pages[documentation.defaultPage];
   if (landingPage?.sourcePath !== "README.md") return;
 
-  const publicPrefix = `/repository-assets/${project.slug}/_root/`;
+  const rootAssetsPrefix = `${publicPrefix}/_root/`;
   const imageSources = [...landingPage.html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gi)]
     .map((match) => match[1])
-    .filter((source) => source.startsWith(publicPrefix));
+    .filter((source) => source.startsWith(rootAssetsPrefix));
   const repositoryRoot = await realpath(repositoryDirectory);
   await Promise.all([...new Set(imageSources)].map(async (source) => {
-    const relativePath = decodeURIComponent(new URL(source, "https://repodocs.invalid").pathname.slice(publicPrefix.length));
+    const relativePath = decodeURIComponent(new URL(source, "https://repodocs.invalid").pathname.slice(rootAssetsPrefix.length));
     const sourceFile = await realpath(path.resolve(repositoryDirectory, relativePath));
     if (sourceFile !== repositoryRoot && !sourceFile.startsWith(`${repositoryRoot}${path.sep}`)) {
       throw new Error(`Root README asset points outside the repository: ${relativePath}`);
@@ -65,6 +87,161 @@ async function copyRootReadmeAssets(
     await mkdir(path.dirname(destinationFile), { recursive: true });
     await copyFile(sourceFile, destinationFile);
   }));
+}
+
+function localizedNavigation(items: NavItem[], pages: Record<string, CachedPage>): NavItem[] {
+  return items.map((item) => item.type === "page"
+    ? { ...item, title: pages[item.path]?.title ?? item.title }
+    : { ...item, children: localizedNavigation(item.children, pages) });
+}
+
+function localizedFallbackPages(
+  pages: Record<string, CachedPage>,
+  sourceRoute: string,
+  destinationRoute: string,
+): Record<string, CachedPage> {
+  return Object.fromEntries(Object.entries(pages).map(([pagePath, page]) => [
+    pagePath,
+    { ...page, html: page.html.replaceAll(`${sourceRoute}/`, `${destinationRoute}/`) },
+  ]));
+}
+
+async function translationDirectories(repositoryDirectory: string): Promise<Array<{ code: string; relativePath: string }>> {
+  const root = path.join(repositoryDirectory, "docs", "translations");
+  let entries: Dirent<string>[];
+  try {
+    entries = await readdir(root, { withFileTypes: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+  const locales = new Set<string>();
+  return entries.flatMap((entry) => {
+    if (!entry.isDirectory() || entry.isSymbolicLink()) return [];
+    const code = entry.name.toLowerCase().replaceAll("_", "-");
+    if (!/^[a-z]{2}(?:-[a-z0-9]{2,8})?$/.test(code)) {
+      throw new Error(`Invalid documentation locale directory: docs/translations/${entry.name}`);
+    }
+    if (locales.has(code)) throw new Error(`Duplicate documentation locale: ${code}`);
+    locales.add(code);
+    return [{ code, relativePath: path.posix.join("docs", "translations", entry.name) }];
+  });
+}
+
+function projectDefaults(
+  source: Awaited<ReturnType<typeof loadRepositorySources>>[number],
+): ProjectConfiguration {
+  return {
+    id: source.slug,
+    documentationType: source.documentationType,
+    category: source.category,
+    platforms: source.platforms,
+    useReadmeFrontPage: source.useReadmeFrontPage,
+    footerLinks: source.footerLinks,
+    versions: source.versions,
+    defaultLocale: source.defaultLocale,
+  };
+}
+
+async function compileVersion(
+  repository: ReturnType<typeof parseRepositoryUrl> & { slug: string },
+  repositoryDirectory: string,
+  revision: string,
+  branch: string,
+  versionId: string,
+  displayName: string,
+  configuration: ProjectConfiguration,
+): Promise<{ project: CachedProject; version: CachedDocumentationVersion }> {
+  const routeProject = {
+    slug: repository.slug,
+    documentationType: configuration.documentationType,
+    category: configuration.category,
+    defaultVersion: versionId,
+    defaultLocale: configuration.defaultLocale,
+  };
+  const assetPublicPath = `/repository-assets/${repository.slug}/${versionId}`;
+  const assetDestination = path.join(assetsDirectory, repository.slug, versionId);
+  const baseProject = await buildDocumentation(
+    repository,
+    repositoryDirectory,
+    revision,
+    displayName,
+    configuration,
+    projectDocumentationBasePath(routeProject, versionId, configuration.defaultLocale),
+    undefined,
+    {
+      assetBasePath: assetPublicPath,
+      configuration,
+      locale: configuration.defaultLocale,
+      versionBranch: branch,
+      versionId,
+    },
+  );
+
+  const baseLocale = baseProject.versions[versionId].locales[configuration.defaultLocale];
+  await copyDocumentationAssets(path.join(repositoryDirectory, "docs"), assetDestination);
+  await copyRootReadmeAssets(repositoryDirectory, assetDestination, baseLocale, assetPublicPath);
+
+  const locales: Record<string, CachedDocumentationLocale> = {
+    [configuration.defaultLocale]: baseLocale,
+  };
+  for (const translation of await translationDirectories(repositoryDirectory)) {
+    if (translation.code === configuration.defaultLocale) {
+      throw new Error(`The default locale "${translation.code}" cannot also be a translation directory.`);
+    }
+    let translatedProject: CachedProject;
+    try {
+      translatedProject = await buildDocumentation(
+        repository,
+        repositoryDirectory,
+        revision,
+        displayName,
+        configuration,
+        projectDocumentationBasePath(routeProject, versionId, translation.code),
+        undefined,
+        {
+          assetBasePath: `${assetPublicPath}/${translation.relativePath.slice("docs/".length)}`,
+          configuration,
+          docsRelativeDirectory: translation.relativePath,
+          includeRootReadme: false,
+          locale: translation.code,
+          versionBranch: branch,
+          versionId,
+        },
+      );
+    } catch (error) {
+      if (error instanceof MissingDocumentationError) continue;
+      throw error;
+    }
+    const translated = translatedProject.versions[versionId].locales[translation.code];
+    const pages = {
+      ...localizedFallbackPages(
+        baseLocale.pages,
+        projectDocumentationBasePath(routeProject, versionId, configuration.defaultLocale),
+        projectDocumentationBasePath(routeProject, versionId, translation.code),
+      ),
+      ...translated.pages,
+    };
+    locales[translation.code] = {
+      code: translation.code,
+      label: localeLabel(translation.code),
+      defaultPage: baseLocale.defaultPage,
+      navigation: localizedNavigation(baseLocale.navigation, pages),
+      pages,
+    };
+  }
+
+  return {
+    project: baseProject,
+    version: {
+      id: versionId,
+      label: versionLabel(versionId),
+      branch,
+      sourceRevision: revision,
+      builtAt: baseProject.versions[versionId].builtAt,
+      locales,
+    },
+  };
 }
 
 async function copyModFavicon(
@@ -155,18 +332,35 @@ async function syncSource(
   const synced = await syncRepository(repository);
   let project: CachedProject;
   try {
-    project = await buildDocumentation(
-      repository,
-      synced.directory,
-      synced.revision,
-      source.name,
-      {
-        documentationType: source.documentationType,
-        category: source.category,
-        useReadmeFrontPage: source.useReadmeFrontPage,
-        footerLinks: source.footerLinks,
-      },
+    const configuration = await readProjectConfiguration(
+      path.join(synced.directory, "docs"),
+      projectDefaults(source),
     );
+    const versionSpecs = [
+      { id: "latest", branch: synced.defaultBranch, revision: synced.revision },
+      ...Object.entries(configuration.versions).map(([id, branch]) => ({ id, branch, revision: null })),
+    ];
+    const versions: Record<string, CachedDocumentationVersion> = {};
+    let latestProject: CachedProject | null = null;
+    for (const spec of versionSpecs) {
+      const revision = spec.revision ?? await checkoutRepositoryBranch(synced.directory, spec.branch);
+      const compiled = await compileVersion(
+        repository,
+        synced.directory,
+        revision,
+        spec.branch,
+        spec.id,
+        source.name,
+        configuration,
+      );
+      versions[spec.id] = compiled.version;
+      if (spec.id === "latest") {
+        latestProject = compiled.project;
+        latestProject.favicon = await copyModFavicon(synced.directory, latestProject);
+      }
+    }
+    if (!latestProject) throw new Error(`Could not compile the latest documentation for ${source.name}.`);
+    project = { ...latestProject, defaultVersion: "latest", versions };
   } catch (error) {
     if (error instanceof MissingDocumentationError) {
       process.stderr.write(`Skipped ${source.name}: ${error.message}\n`);
@@ -174,11 +368,13 @@ async function syncSource(
     }
     throw error;
   }
-  const projectAssetsDirectory = path.join(assetsDirectory, source.slug);
-  await copyDocumentationAssets(path.join(synced.directory, "docs"), projectAssetsDirectory);
-  await copyRootReadmeAssets(synced.directory, projectAssetsDirectory, project);
-  project.favicon = await copyModFavicon(synced.directory, project);
-  process.stdout.write(`Synced ${source.name}: ${Object.keys(project.pages).length} pages.\n`);
+  const versionCount = Object.keys(project.versions).length;
+  const localeCount = new Set(Object.values(project.versions).flatMap((version) => Object.keys(version.locales))).size;
+  const defaultVersion = project.versions[project.defaultVersion];
+  const defaultLocale = defaultVersion.locales[project.defaultLocale];
+  process.stdout.write(
+    `Synced ${source.name}: ${Object.keys(defaultLocale.pages).length} pages, ${versionCount} version${versionCount === 1 ? "" : "s"}, ${localeCount} locale${localeCount === 1 ? "" : "s"}.\n`,
+  );
   return project;
 }
 
@@ -215,10 +411,14 @@ async function main(): Promise<void> {
     siteRevision,
     config.site.name,
     {
+      id: "repodocs",
       documentationType: null,
       category: null,
+      platforms: {},
       useReadmeFrontPage: false,
       footerLinks: [],
+      versions: {},
+      defaultLocale: "en",
     },
     "/docs",
     async (sourcePath) => {

@@ -1,7 +1,8 @@
 import { BookOpen, Github } from "lucide-react";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { ProjectTree } from "@/components/project-tree";
-import { projectBasePath, projectPageHref } from "@/lib/routes";
+import { projectDocumentationBasePath, projectOverviewHref } from "@/lib/routes";
+import { defaultDocumentationContext } from "@/lib/documentation-context";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedProject } from "@/lib/types";
 
@@ -12,11 +13,12 @@ type GameCategory = {
 };
 
 function projectNavigation(project: CachedProject) {
-  const root = project.navigation.length === 1 ? project.navigation[0] : null;
+  const { locale } = defaultDocumentationContext(project);
+  const root = locale.navigation.length === 1 ? locale.navigation[0] : null;
   const items = root?.type === "section" && root.title.toLowerCase() === project.name.toLowerCase()
     ? root.children
-    : project.navigation;
-  return items.filter((item) => item.type !== "page" || item.path !== project.defaultPage);
+    : locale.navigation;
+  return items.filter((item) => item.type !== "page" || item.path !== locale.defaultPage);
 }
 
 export function GameDirectoryPage({
@@ -66,7 +68,7 @@ export function GameDirectoryPage({
         <nav className="game-project-list" aria-label={`${activeCategory?.label ?? game} projects`}>
           {visibleProjects.map((project) => {
             const navigation = projectNavigation(project);
-            const href = projectPageHref(project, project.defaultPage);
+            const href = projectOverviewHref(project);
             if (navigation.length === 0) {
               return <a className="project-tree-link" href={href} key={project.slug}>{project.name}</a>;
             }
@@ -75,7 +77,7 @@ export function GameDirectoryPage({
                 name={project.name}
                 href={href}
                 navigation={navigation}
-                basePath={projectBasePath(project)}
+                basePath={projectDocumentationBasePath(project)}
                 currentPath="__category__"
                 key={project.slug}
               />

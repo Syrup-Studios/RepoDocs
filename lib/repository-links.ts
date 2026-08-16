@@ -14,12 +14,23 @@ export function repositoryCommitHref(repositoryUrl: string, revision: string): s
   return `${repository}/commit/${revision}`;
 }
 
-export function repositoryFileHref(repositoryUrl: string, revision: string, sourcePath: string): string {
+export function repositoryFileHref(
+  repositoryUrl: string,
+  revision: string,
+  sourcePath: string,
+  referenceType: "branch" | "commit" = "commit",
+): string {
   const repository = repositoryBase(repositoryUrl);
   const host = new URL(repository).hostname;
   const filePath = encodedFilePath(sourcePath);
-  if (host === "gitlab.com") return `${repository}/-/blob/${revision}/${filePath}`;
-  if (host === "codeberg.org") return `${repository}/src/commit/${revision}/${filePath}`;
-  if (host === "bitbucket.org") return `${repository}/src/${revision}/${filePath}`;
-  return `${repository}/blob/${revision}/${filePath}`;
+  const reference = revision.split("/").map(encodeURIComponent).join("/");
+  if (host === "gitlab.com") return `${repository}/-/blob/${reference}/${filePath}`;
+  if (host === "codeberg.org") return `${repository}/src/${referenceType}/${reference}/${filePath}`;
+  if (host === "bitbucket.org") return `${repository}/src/${reference}/${filePath}`;
+  return `${repository}/blob/${reference}/${filePath}`;
+}
+
+export function repositoryIssuesHref(repositoryUrl: string): string {
+  const repository = repositoryBase(repositoryUrl);
+  return new URL(repository).hostname === "gitlab.com" ? `${repository}/-/issues` : `${repository}/issues`;
 }

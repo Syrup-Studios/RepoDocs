@@ -1,3 +1,6 @@
 name: Syrup Library
 slug: syrup-library
 repository: https://github.com/Syrup-Studios/syrup_library
+type: minecraft
+category: mod
+rootREADME: false

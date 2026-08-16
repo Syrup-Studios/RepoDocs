@@ -7,6 +7,11 @@ export type RepositoryFooterLink = {
   url: string;
 };
 
+export type ProjectPlatforms = {
+  modrinth?: string;
+  curseforge?: string;
+};
+
 export type DocumentHistory = {
   createdAt: string;
   updatedAt: string;
@@ -27,6 +32,23 @@ export type CachedPage = RenderedDocumentation & {
   description: string;
 };
 
+export type CachedDocumentationLocale = {
+  code: string;
+  label: string;
+  defaultPage: string;
+  navigation: NavItem[];
+  pages: Record<string, CachedPage>;
+};
+
+export type CachedDocumentationVersion = {
+  id: string;
+  label: string;
+  branch: string;
+  sourceRevision: string;
+  builtAt: string;
+  locales: Record<string, CachedDocumentationLocale>;
+};
+
 export type CachedProject = {
   slug: string;
   name: string;
@@ -35,12 +57,11 @@ export type CachedProject = {
   repositoryHost: string;
   documentationType: string | null;
   category: string | null;
+  platforms: ProjectPlatforms;
   footerLinks: RepositoryFooterLink[];
-  defaultPage: string;
-  navigation: NavItem[];
-  pages: Record<string, CachedPage>;
-  sourceRevision: string;
-  builtAt: string;
+  defaultVersion: string;
+  defaultLocale: string;
+  versions: Record<string, CachedDocumentationVersion>;
 };
 
 export type GeneratedDocumentation = {

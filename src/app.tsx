@@ -1,12 +1,19 @@
 import HomePage, { type DirectorySelection } from "@/app/page";
 import { DocumentationPage } from "@/components/documentation-page";
 import { NotFound } from "@/components/not-found";
+import { ProjectOverviewPage } from "@/components/project-overview-page";
 import generatedData from "@/generated/docs.json";
 import config from "@/repodocs.config";
-import { categorySegment, projectPageHref } from "@/lib/routes";
+import {
+  categorySegment,
+  projectOverviewHref,
+  projectPageHref,
+} from "@/lib/routes";
+import { defaultDocumentationContext } from "@/lib/documentation-context";
 import type { GeneratedDocumentation } from "@/lib/types";
 
 const documentation = generatedData as unknown as GeneratedDocumentation;
+const siteDocumentation = defaultDocumentationContext(documentation.siteDocumentation);
 
 function knownTypes(): string[] {
   return [...new Set(["minecraft", ...documentation.projects.flatMap((project) => project.documentationType ? [project.documentationType] : [])])];
@@ -49,41 +56,42 @@ export function resolvePage(pathname: string) {
   const parts = pathParts(pathname);
   if (parts[0] === "docs") {
     const documentationPath = parts.slice(1).join("/");
-    if (documentation.siteDocumentation.pages[documentationPath]) {
+    if (siteDocumentation.locale.pages[documentationPath]) {
       return {
         type: "home" as const,
         selection: { type: null, category: null, infoPage: "docs" as const, documentationPath },
       };
     }
   }
+
+  if (parts[1] === "project" && parts[0] && parts[2]) {
+    const localeCode = parts[0];
+    const project = documentation.projects.find((item) => item.slug === parts[2]);
+    if (!project) return { type: "not-found" as const };
+    const version = project.versions[parts[3]];
+    const locale = version?.locales[localeCode];
+    if (!version || !locale) return { type: "not-found" as const };
+    if (parts.length === 4) return { type: "project-overview" as const, project, version, locale };
+    if (parts[4] !== "docs") return { type: "not-found" as const };
+    const currentPath = parts.slice(5).join("/") || locale.defaultPage;
+    const page = locale.pages[currentPath];
+    if (!page) return { type: "not-found" as const };
+    return { type: "documentation" as const, project, version, locale, page, currentPath };
+  }
+
   const selection = directorySelection(parts);
   if (selection) return { type: "home" as const, selection };
 
-  const classifiedCategory = parts[0] === "mods" || parts[0] === "modpacks"
-    ? categoryFromSegment(parts[0])
-    : null;
-  const isGenericDocs = parts[0] === "docs";
-  if ((!classifiedCategory && !isGenericDocs) || !parts[1]) return { type: "not-found" as const };
-
-  const project = documentation.projects.find((item) =>
-    item.slug === parts[1]
-    && (classifiedCategory
-      ? item.documentationType === "minecraft" && item.category === classifiedCategory
-      : item.documentationType !== "minecraft" || !item.category),
-  );
-  if (!project) return { type: "not-found" as const };
-  const currentPath = parts.slice(2).join("/") || project.defaultPage;
-  const page = project.pages[currentPath];
-  if (!page) return { type: "not-found" as const };
-  return { type: "documentation" as const, project, page, currentPath };
+  return { type: "not-found" as const };
 }
 
 export function pageMetadata(pathname: string): { title: string; description: string; favicon: string | null } {
   const resolved = resolvePage(pathname);
   if (resolved.type === "home") {
     if (resolved.selection.infoPage === "docs") {
-      const documentationPath = resolved.selection.documentationPath ?? documentation.siteDocumentation.defaultPage;
-      const page = documentation.siteDocumentation.pages[documentationPath];
+      const { locale } = defaultDocumentationContext(documentation.siteDocumentation);
+      const documentationPath = resolved.selection.documentationPath ?? locale.defaultPage;
+      const page = locale.pages[documentationPath];
       return {
         title: `${page.title} · ${config.site.name}`,
         description: page.description,
@@ -99,9 +107,20 @@ export function pageMetadata(pathname: string): { title: string; description: st
     return { title, description: config.site.description, favicon: null };
   }
   if (resolved.type === "documentation") {
+    const pageTitle = resolved.page.title === resolved.project.name
+      ? resolved.project.name
+      : `${resolved.page.title} · ${resolved.project.name}`;
     return {
-      title: `${resolved.page.title} · ${resolved.project.name} · ${config.site.name}`,
+      title: `${pageTitle} · ${config.site.name}`,
       description: resolved.page.description,
+      favicon: resolved.project.favicon,
+    };
+  }
+  if (resolved.type === "project-overview") {
+    const landingPage = resolved.locale.pages[resolved.locale.defaultPage];
+    return {
+      title: `${resolved.project.name} · ${config.site.name}`,
+      description: landingPage?.description || `${resolved.project.name} documentation.`,
       favicon: resolved.project.favicon,
     };
   }
@@ -115,14 +134,17 @@ export function pageMetadata(pathname: string): { title: string; description: st
 export function App({ pathname }: { pathname: string }) {
   const resolved = resolvePage(pathname);
   if (resolved.type === "home") return <HomePage documentation={documentation} selection={resolved.selection} site={config.site} />;
+  if (resolved.type === "project-overview") {
+    return <ProjectOverviewPage projects={documentation.projects} project={resolved.project} version={resolved.version} locale={resolved.locale} site={config.site} />;
+  }
   if (resolved.type === "documentation") {
-    return <DocumentationPage projects={documentation.projects} project={resolved.project} page={resolved.page} currentPath={resolved.currentPath} site={config.site} />;
+    return <DocumentationPage projects={documentation.projects} project={resolved.project} version={resolved.version} locale={resolved.locale} page={resolved.page} currentPath={resolved.currentPath} site={config.site} />;
   }
   return <NotFound siteName={config.site.name} />;
 }
 
 export function staticPaths(): string[] {
-  const siteDocumentationPaths = Object.keys(documentation.siteDocumentation.pages).map((pagePath) =>
+  const siteDocumentationPaths = Object.keys(siteDocumentation.locale.pages).map((pagePath) =>
     `/docs${pagePath ? `/${pagePath}` : ""}/`,
   );
   const paths = [
@@ -136,7 +158,10 @@ export function staticPaths(): string[] {
       ...knownCategories(type).map((category) => `/${type}/${categorySegment(category)}/`),
     ]),
     ...documentation.projects.flatMap((project) =>
-      Object.keys(project.pages).map((pagePath) => projectPageHref(project, pagePath)),
+      Object.values(project.versions).flatMap((version) => Object.values(version.locales).flatMap((locale) => [
+        projectOverviewHref(project, locale.code, version.id),
+        ...Object.keys(locale.pages).map((pagePath) => projectPageHref(project, pagePath, version.id, locale.code)),
+      ])),
     ),
   ];
   return [...new Set(paths)];

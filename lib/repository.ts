@@ -118,24 +118,25 @@ async function exists(filePath: string): Promise<boolean> {
 
 export async function syncRepository(
   repository: RepositoryDetails,
-): Promise<{ directory: string; revision: string }> {
+): Promise<{ directory: string; revision: string; defaultBranch: string }> {
   const base = repositoriesDirectory();
   const directory = path.join(base, repository.slug);
   await mkdir(base, { recursive: true });
 
   if (await exists(path.join(directory, ".git"))) {
     await runGit(["remote", "set-url", "origin", repository.normalizedUrl], directory);
+    await runGit(["config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"], directory);
     const isShallow = await runGit(["rev-parse", "--is-shallow-repository"], directory);
     await runGit(isShallow === "true"
-      ? ["fetch", "--unshallow", "--no-tags", "origin"]
-      : ["fetch", "--no-tags", "origin"], directory);
-    await runGit(["reset", "--hard", "FETCH_HEAD"], directory);
+      ? ["fetch", "--unshallow", "--prune", "--no-tags", "origin"]
+      : ["fetch", "--prune", "--no-tags", "origin"], directory);
+    await runGit(["remote", "set-head", "origin", "--auto"], directory);
+    await runGit(["reset", "--hard", "refs/remotes/origin/HEAD"], directory);
     await runGit(["clean", "-fdx"], directory);
   } else {
     await rm(directory, { recursive: true, force: true });
     await runGit([
       "clone",
-      "--single-branch",
       "--no-tags",
       "--",
       repository.normalizedUrl,
@@ -144,7 +145,22 @@ export async function syncRepository(
   }
 
   const revision = await runGit(["rev-parse", "HEAD"], directory);
-  return { directory, revision };
+  const defaultReference = await runGit(["symbolic-ref", "--short", "refs/remotes/origin/HEAD"], directory);
+  return { directory, revision, defaultBranch: defaultReference.replace(/^origin\//, "") };
+}
+
+export async function checkoutRepositoryBranch(repositoryDirectory: string, branch: string): Promise<string> {
+  if (!branch.trim()) throw new Error("A documentation version must define a Git branch.");
+  const remoteReference = `refs/remotes/origin/${branch}`;
+  let revision: string;
+  try {
+    revision = await runGit(["rev-parse", "--verify", `${remoteReference}^{commit}`], repositoryDirectory);
+  } catch (error) {
+    throw new Error(`Documentation branch does not exist: ${branch}`, { cause: error });
+  }
+  await runGit(["reset", "--hard", revision], repositoryDirectory);
+  await runGit(["clean", "-fdx"], repositoryDirectory);
+  return revision;
 }
 
 export async function readRepositoryFileHistory(

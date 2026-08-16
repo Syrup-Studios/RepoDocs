@@ -1,4 +1,4 @@
-import type { RepositoryFooterLink } from "@/lib/types";
+import type { ProjectPlatforms, RepositoryFooterLink } from "@/lib/types";
 
 export type RepositorySource = {
   /** Name shown on the project index and documentation pages. */
@@ -15,6 +15,12 @@ export type RepositorySource = {
   useReadmeFrontPage: boolean;
   /** Links shown in the footer of every documentation page. */
   footerLinks: RepositoryFooterLink[];
+  /** Project slugs on supported distribution platforms. */
+  platforms: ProjectPlatforms;
+  /** Extra documentation versions mapped to Git branch names. */
+  versions: Record<string, string>;
+  /** Locale used by Markdown files directly inside docs/. */
+  defaultLocale: string;
 };
 
 export type RepositoryConfig = RepositorySource;

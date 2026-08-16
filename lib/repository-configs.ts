@@ -3,6 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { RepositoryConfig, RepositorySource } from "@/lib/config";
+import { parseFooterLinks } from "@/lib/footer";
 
 const validSlug = /^[a-z0-9][a-z0-9-]{0,62}$/;
 const validClassification = /^[a-z0-9][a-z0-9-]*$/;
@@ -28,6 +29,9 @@ function validateRepositoryConfig(value: unknown, location: string): RepositoryC
   if (config.rootREADME !== undefined && typeof config.rootREADME !== "boolean") {
     throw new Error(`${location} rootREADME must be true or false.`);
   }
+  const footerLinks = config.footer === undefined
+    ? []
+    : parseFooterLinks(config.footer, `${location} footer`);
 
   let documentationType: string | null = null;
   let category: string | null = null;
@@ -52,6 +56,7 @@ function validateRepositoryConfig(value: unknown, location: string): RepositoryC
     documentationType,
     category,
     useReadmeFrontPage: config.rootREADME === true,
+    footerLinks,
   };
 }
 

@@ -47,6 +47,15 @@ function pathParts(pathname: string): string[] {
 
 export function resolvePage(pathname: string) {
   const parts = pathParts(pathname);
+  if (parts[0] === "docs") {
+    const documentationPath = parts.slice(1).join("/");
+    if (documentation.siteDocumentation.pages[documentationPath]) {
+      return {
+        type: "home" as const,
+        selection: { type: null, category: null, infoPage: "docs" as const, documentationPath },
+      };
+    }
+  }
   const selection = directorySelection(parts);
   if (selection) return { type: "home" as const, selection };
 
@@ -73,9 +82,11 @@ export function pageMetadata(pathname: string): { title: string; description: st
   const resolved = resolvePage(pathname);
   if (resolved.type === "home") {
     if (resolved.selection.infoPage === "docs") {
+      const documentationPath = resolved.selection.documentationPath ?? documentation.siteDocumentation.defaultPage;
+      const page = documentation.siteDocumentation.pages[documentationPath];
       return {
-        title: `How it works · ${config.site.name}`,
-        description: `How ${config.site.name} builds static documentation from project repositories.`,
+        title: `${page.title} · ${config.site.name}`,
+        description: page.description,
         favicon: null,
       };
     }
@@ -111,9 +122,12 @@ export function App({ pathname }: { pathname: string }) {
 }
 
 export function staticPaths(): string[] {
-  return [
+  const siteDocumentationPaths = Object.keys(documentation.siteDocumentation.pages).map((pagePath) =>
+    `/docs${pagePath ? `/${pagePath}` : ""}/`,
+  );
+  const paths = [
     "/",
-    "/docs/",
+    ...siteDocumentationPaths,
     "/projects/",
     "/mods/",
     "/modpacks/",
@@ -125,4 +139,5 @@ export function staticPaths(): string[] {
       Object.keys(project.pages).map((pagePath) => projectPageHref(project, pagePath)),
     ),
   ];
+  return [...new Set(paths)];
 }

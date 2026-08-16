@@ -1,6 +1,6 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { CalendarPlus, History, UserRound } from "lucide-react";
-import type { RenderedDocumentation } from "@/lib/types";
+import type { RenderedDocumentation, RepositoryFooterLink } from "@/lib/types";
 
 function relativeDate(value: string, reference: string): string {
   const elapsedSeconds = (new Date(value).getTime() - new Date(reference).getTime()) / 1000;
@@ -55,6 +55,8 @@ export function DocumentationContent({
   commitRevision,
   sourceHref,
   commitHref,
+  repositoryName,
+  repositoryFooter = [],
 }: {
   page: RenderedDocumentation;
   referenceDate: string;
@@ -62,6 +64,8 @@ export function DocumentationContent({
   commitRevision: string;
   sourceHref: string;
   commitHref: string;
+  repositoryName?: string;
+  repositoryFooter?: RepositoryFooterLink[];
 }) {
   return (
     <>
@@ -69,6 +73,17 @@ export function DocumentationContent({
         <article className="markdown-body">
           <div dangerouslySetInnerHTML={{ __html: page.html }} />
         </article>
+        {repositoryName && repositoryFooter.length > 0 && (
+          <nav className="repository-footer" aria-label={`${repositoryName} links`}>
+            <strong>{repositoryName}</strong>
+            {repositoryFooter.map((link) => (
+              <span className="repository-footer-link" key={`${link.label}-${link.url}`}>
+                <span aria-hidden="true">|</span>
+                <a href={link.url} target="_blank" rel="noreferrer noopener">{link.label}</a>
+              </span>
+            ))}
+          </nav>
+        )}
         <footer className="page-footer">
           <div className="page-history" aria-label="Document history">
             <LocalDateTitle label="Last edited" value={page.history.updatedAt}>

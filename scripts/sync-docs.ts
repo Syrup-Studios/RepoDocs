@@ -1,12 +1,10 @@
 import { copyFile, lstat, mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { buildDocumentation, MissingDocumentationError } from "@/lib/docs";
-import { renderMarkdown } from "@/lib/markdown";
-import { parseRepositoryUrl, readRepositoryDefaultAuthor, readRepositoryFileHistory, readRepositoryRevision, syncRepository } from "@/lib/repository";
+import { parseRepositoryUrl, readRepositoryDefaultAuthor, readRepositoryRevision, syncRepository } from "@/lib/repository";
 import { loadRepositorySources } from "@/lib/repository-configs";
 import type { CachedProject } from "@/lib/types";
-
-const siteDocumentationPath = path.join("docs", "index.md");
+import config from "@/repodocs.config";
 
 const generatedDirectory = path.join(process.cwd(), "generated");
 const assetsDirectory = path.join(process.cwd(), "public", "repository-assets");
@@ -166,6 +164,7 @@ async function syncSource(
         documentationType: source.documentationType,
         category: source.category,
         useReadmeFrontPage: source.useReadmeFrontPage,
+        footerLinks: source.footerLinks,
       },
     );
   } catch (error) {
@@ -206,25 +205,36 @@ async function main(): Promise<void> {
 
   const projects = synchronizedProjects.filter((project): project is CachedProject => project !== null);
 
-  const siteDocumentationFile = path.join(process.cwd(), siteDocumentationPath);
   const siteRevision = await readRepositoryRevision(process.cwd());
-  let siteDocumentationHistory;
-  try {
-    siteDocumentationHistory = await readRepositoryFileHistory(process.cwd(), siteDocumentationPath);
-  } catch {
-    const fileStats = await stat(siteDocumentationFile);
-    siteDocumentationHistory = {
-      createdAt: (fileStats.birthtimeMs > 0 ? fileStats.birthtime : fileStats.mtime).toISOString(),
-      updatedAt: fileStats.mtime.toISOString(),
-      updatedRevision: siteRevision,
-      authors: [await readRepositoryDefaultAuthor(process.cwd())],
-    };
-  }
-  const siteDocumentation = {
-    ...renderMarkdown(await readFile(siteDocumentationFile, "utf8")),
-    history: siteDocumentationHistory,
-    sourceRevision: siteRevision,
-  };
+  const siteAuthor = await readRepositoryDefaultAuthor(process.cwd());
+  const parsedSiteRepository = parseRepositoryUrl(config.site.repository);
+  const siteRepository = { ...parsedSiteRepository, slug: "repodocs" };
+  const siteDocumentation = await buildDocumentation(
+    siteRepository,
+    process.cwd(),
+    siteRevision,
+    config.site.name,
+    {
+      documentationType: null,
+      category: null,
+      useReadmeFrontPage: false,
+      footerLinks: [],
+    },
+    "/docs",
+    async (sourcePath) => {
+      const fileStats = await stat(path.join(process.cwd(), sourcePath));
+      return {
+        createdAt: (fileStats.birthtimeMs > 0 ? fileStats.birthtime : fileStats.mtime).toISOString(),
+        updatedAt: fileStats.mtime.toISOString(),
+        updatedRevision: siteRevision,
+        authors: [siteAuthor],
+      };
+    },
+  );
+  await copyDocumentationAssets(
+    path.join(process.cwd(), "docs"),
+    path.join(assetsDirectory, siteDocumentation.slug),
+  );
   const output = { generatedAt: new Date().toISOString(), siteDocumentation, projects };
   await mkdir(generatedDirectory, { recursive: true });
   const destination = path.join(generatedDirectory, "docs.json");

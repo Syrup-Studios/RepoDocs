@@ -117,6 +117,8 @@ export function DocumentationPage({
         commitRevision={page.history.updatedRevision}
         sourceHref={repositoryFileHref(project.repositoryUrl, project.sourceRevision, page.sourcePath)}
         commitHref={repositoryCommitHref(project.repositoryUrl, page.history.updatedRevision)}
+        repositoryName={project.name}
+        repositoryFooter={project.footerLinks}
       />
     </div>
   );

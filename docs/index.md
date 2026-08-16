@@ -1,64 +1,65 @@
-# How it works
+# RepoDocs guide
 
-RepoDocs collects Markdown from public Git repositories and builds one static documentation website. Each project keeps its documentation beside its code, so the source repository stays authoritative.
+RepoDocs collects Markdown from public Git repositories and builds one static documentation website. Each project keeps its documentation beside its code. The source repository stays authoritative.
 
-The published site does not need a database, a server process, or access to Git. A new build publishes changes from the source repositories.
+The published site does not need a database, a server process, or access to Git. Run a new build to publish changes from the source repositories.
 
-## Add a repository
+## How RepoDocs works
 
-Add a YAML file to the `repositories/` directory in RepoDocs. The file defines the project name, a stable URL slug, and its public HTTPS repository URL.
+A build has three main stages:
 
-```yaml
-name: My project
-slug: my-project
-repository: https://github.com/example/my-project
-type: minecraft
-category: mod
-rootREADME: true
-```
+1. **Sync:** RepoDocs reads each YAML file in `repositories/`. It clones a new repository or fetches the latest commit into its local cache.
+2. **Compile:** RepoDocs reads the repository's root `docs/` directory. It converts Markdown to HTML, builds navigation, rewrites local links, copies assets, and reads page history from Git.
+3. **Publish:** Vite builds the browser files. The prerender script writes an `index.html` file for every project, directory, documentation page, and the 404 page.
 
-The slug uses lowercase letters, numbers, and hyphens. It stays the same if the repository name changes. Public repositories from GitHub, GitLab, Codeberg, and Bitbucket are supported. The optional `type` and `category` values classify the project. Set both values together. A Minecraft project must use `mod` or `modpack` as its category. The optional `rootREADME` value uses the repository's root `README.md` as the landing page.
-
-## Write documentation
-
-Put Markdown files in the source repository's root `docs/` directory. An `index.md` or `README.md` file becomes the landing page. Other filenames become page paths without the `.md` extension.
+The browser bundle adds client-side navigation and search. The main content is already in the generated HTML. A page remains useful before React starts.
 
 ```text
-docs/
-├── index.md
-├── getting-started.md
-├── guide/
-│   └── configuration.md
-└── images/
-    └── example.png
+repositories/*.yml
+        │
+        ▼
+public Git repositories ──► Markdown, navigation, assets, and Git history
+        │
+        ▼
+generated/docs.json + public/repository-assets/
+        │
+        ▼
+Vite build + prerender ──► dist/
 ```
 
-Relative links between Markdown files become site links. Other files under `docs/`, such as images and downloads, are copied with the same directory structure. Safe HTML is rendered, while unsafe elements and attributes are removed. Images referenced by an enabled root README are copied from the repository and receive working site URLs.
+## Requirements and quick start
 
-## Organize navigation
+RepoDocs needs Bun 1.3 or newer, Git, and network access to its configured public repositories.
 
-Navigation follows the file tree by default. Add `.nav.yml` at the repository root or inside `docs/` to set page names and order.
+Install the dependencies and start the development server:
 
-```yaml
-nav:
-  - Home: index.md
-  - Getting started: getting-started.md
-  - Guide:
-      - Configuration: guide/configuration.md
+```bash
+bun install
+bun run dev
 ```
 
-A navigation file can contain pages, named sections, nested lists, and `*` to include files that are not listed by name.
+`bun run dev` syncs all configured repositories before it starts Vite. Remote changes do not appear automatically while the server runs. Restart the command or run `bun run docs:sync` to pull them again.
 
-## Classify the project
+## Configure the site
 
-An optional `docs/repodocs.yml` file puts a project in the correct directory. For example, use `type: minecraft` with `category: mod` or `category: modpack`. Its values replace matching documentation settings in the local `repositories/*.yml` file. It cannot replace the local name, slug, or repository URL. Set `rootREADME: true` to use the repository's root `README.md` as the project landing page. Projects without a local or source classification appear under General projects.
+Edit `repodocs.config.ts` to set the site name, description, and source repository link:
 
-## Build the site
+```ts
+const config = {
+  site: {
+    name: "RepoDocs",
+    description: "Documentation that lives with the code.",
+    repository: "https://github.com/example/repodocs",
+  },
+};
+```
 
-During a build, RepoDocs pulls the latest commit from each configured repository. It renders the Markdown, creates navigation, copies assets, and reads creation dates, edit dates, and authors from Git history.
+These values appear in page titles, headers, metadata, and links on the generated site.
 
-It then creates a static HTML file for every route. The browser code adds fast internal navigation and search across all published pages.
+The Markdown files in `docs/` are the source for this guide. The documentation sync renders them and creates the guide navigation.
 
-## Publish updates
+## Continue setup
 
-Documentation changes appear after the next RepoDocs build and deployment. The deployment workflow runs after changes to this repository, on a schedule, or when a maintainer starts it manually.
+- [Configure repositories](repositories.md).
+- [Write and organize documentation](authoring.md).
+- [Build and deploy the site](operations.md).

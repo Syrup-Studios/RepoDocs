@@ -1,3 +1,5 @@
+import type { RepositoryFooterLink } from "@/lib/types";
+
 export type RepositorySource = {
   /** Name shown on the project index and documentation pages. */
   name: string;
@@ -11,6 +13,8 @@ export type RepositorySource = {
   category: string | null;
   /** Whether the root README is the default documentation page. */
   useReadmeFrontPage: boolean;
+  /** Links shown in the footer of every documentation page. */
+  footerLinks: RepositoryFooterLink[];
 };
 
 export type RepositoryConfig = RepositorySource;

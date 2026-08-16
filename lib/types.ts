@@ -2,6 +2,11 @@ export type NavItem =
   | { type: "page"; title: string; path: string }
   | { type: "section"; title: string; children: NavItem[] };
 
+export type RepositoryFooterLink = {
+  label: string;
+  url: string;
+};
+
 export type DocumentHistory = {
   createdAt: string;
   updatedAt: string;
@@ -30,6 +35,7 @@ export type CachedProject = {
   repositoryHost: string;
   documentationType: string | null;
   category: string | null;
+  footerLinks: RepositoryFooterLink[];
   defaultPage: string;
   navigation: NavItem[];
   pages: Record<string, CachedPage>;
@@ -39,8 +45,6 @@ export type CachedProject = {
 
 export type GeneratedDocumentation = {
   generatedAt: string;
-  siteDocumentation: RenderedDocumentation & {
-    sourceRevision: string;
-  };
+  siteDocumentation: CachedProject;
   projects: CachedProject[];
 };

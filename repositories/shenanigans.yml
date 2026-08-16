@@ -1,3 +1,11 @@
 name: Shenanigans
 slug: shenanigans
 repository: https://github.com/Syrup-Studios/shenanigans
+footer:
+  - label: Modrinth
+    url: https://modrinth.com/modpack/shenanigans
+  - label: CurseForge
+    url: https://www.curseforge.com/minecraft/modpacks/shenanigans-cf-edition
+  - label: GitHub
+    url: https://github.com/Syrup-Studios/shenanigans
+

@@ -5,7 +5,8 @@ import hljs from "highlight.js";
 import { parse as parseYaml } from "yaml";
 import sanitizeHtml from "sanitize-html";
 import { createMarkdown, prepareMarkdown, slugifyHeading, type Heading } from "@/lib/markdown";
-import type { CachedPage, CachedProject, NavItem } from "@/lib/types";
+import { parseFooterLinks } from "@/lib/footer";
+import type { CachedPage, CachedProject, DocumentHistory, NavItem, RepositoryFooterLink } from "@/lib/types";
 import { readRepositoryFileHistory, type RepositoryDetails } from "@/lib/repository";
 import { projectBasePath } from "@/lib/routes";
 
@@ -13,6 +14,7 @@ type ProjectClassification = {
   documentationType: string | null;
   category: string | null;
   useReadmeFrontPage: boolean;
+  footerLinks: RepositoryFooterLink[];
 };
 
 export class MissingDocumentationError extends Error {
@@ -44,20 +46,27 @@ async function readProjectClassification(
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("docs/repodocs.yml must contain a YAML object.");
   }
-  if (typeof parsed.type !== "string" || typeof parsed.category !== "string") {
-    throw new Error("docs/repodocs.yml must define string values for type and category.");
+  if ((parsed.type === undefined) !== (parsed.category === undefined)) {
+    throw new Error("docs/repodocs.yml must define type and category together.");
   }
   if (parsed.rootREADME !== undefined && typeof parsed.rootREADME !== "boolean") {
     throw new Error("rootREADME in docs/repodocs.yml must be true or false.");
   }
 
-  const documentationType = parsed.type.trim().toLowerCase();
-  const category = parsed.category.trim().toLowerCase();
-  if (!/^[a-z0-9][a-z0-9-]*$/.test(documentationType) || !/^[a-z0-9][a-z0-9-]*$/.test(category)) {
-    throw new Error("The type and category in docs/repodocs.yml must use lowercase letters, numbers, or hyphens.");
-  }
-  if (documentationType === "minecraft" && category !== "mod" && category !== "modpack") {
-    throw new Error('Minecraft documentation must use category: "mod" or category: "modpack".');
+  let documentationType = defaults.documentationType;
+  let category = defaults.category;
+  if (parsed.type !== undefined && parsed.category !== undefined) {
+    if (typeof parsed.type !== "string" || typeof parsed.category !== "string") {
+      throw new Error("The type and category in docs/repodocs.yml must be strings.");
+    }
+    documentationType = parsed.type.trim().toLowerCase();
+    category = parsed.category.trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(documentationType) || !/^[a-z0-9][a-z0-9-]*$/.test(category)) {
+      throw new Error("The type and category in docs/repodocs.yml must use lowercase letters, numbers, or hyphens.");
+    }
+    if (documentationType === "minecraft" && category !== "mod" && category !== "modpack") {
+      throw new Error('Minecraft documentation must use category: "mod" or category: "modpack".');
+    }
   }
   return {
     documentationType,
@@ -65,6 +74,9 @@ async function readProjectClassification(
     useReadmeFrontPage: parsed.rootREADME === undefined
       ? defaults.useReadmeFrontPage
       : parsed.rootREADME,
+    footerLinks: parsed.footer === undefined
+      ? defaults.footerLinks
+      : parseFooterLinks(parsed.footer, "footer in docs/repodocs.yml"),
   };
 }
 
@@ -420,7 +432,10 @@ export async function buildDocumentation(
     documentationType: null,
     category: null,
     useReadmeFrontPage: false,
+    footerLinks: [],
   },
+  routeBaseOverride?: string,
+  historyFallback?: (sourcePath: string) => Promise<DocumentHistory>,
 ): Promise<CachedProject> {
   const docsDirectory = path.join(repositoryDirectory, "docs");
   let docsStats: Awaited<ReturnType<typeof lstat>>;
@@ -441,9 +456,18 @@ export async function buildDocumentation(
     throw new MissingDocumentationError("The docs/ directory does not contain Markdown files.");
   }
   const projectConfiguration = await readProjectClassification(docsDirectory, defaultClassification);
-  const { useReadmeFrontPage, ...classification } = projectConfiguration;
+  const { useReadmeFrontPage, ...projectSettings } = projectConfiguration;
   const root = contentRoot(files);
-  const routeBase = projectBasePath({ slug: repository.slug, ...classification });
+  const routeBase = routeBaseOverride ?? projectBasePath({ slug: repository.slug, ...projectSettings });
+
+  const readHistory = async (sourcePath: string): Promise<DocumentHistory> => {
+    try {
+      return await readRepositoryFileHistory(repositoryDirectory, sourcePath);
+    } catch (error) {
+      if (!historyFallback) throw error;
+      return historyFallback(sourcePath);
+    }
+  };
 
   const pagePaths = new Map<string, string>();
   const routePaths = new Map<string, string>();
@@ -472,7 +496,7 @@ export async function buildDocumentation(
   }, true);
   for (const file of files) {
     const source = await readFile(path.join(docsDirectory, file), "utf8");
-    const history = await readRepositoryFileHistory(repositoryDirectory, path.posix.join("docs", file));
+    const history = await readHistory(path.posix.join("docs", file));
     const preparedSource = prepareMarkdown(source);
     const title = pageTitle(source, file);
     const headings: Heading[] = [];
@@ -506,7 +530,7 @@ export async function buildDocumentation(
     }
 
     const source = await readFile(readmeFile, "utf8");
-    const history = await readRepositoryFileHistory(repositoryDirectory, "README.md");
+    const history = await readHistory("README.md");
     const preparedSource = prepareMarkdown(source);
     const headings: Heading[] = [];
     const rootPagePaths = new Map(pagePaths);
@@ -571,7 +595,7 @@ export async function buildDocumentation(
     favicon: null,
     repositoryUrl: repository.normalizedUrl.replace(/\.git$/, ""),
     repositoryHost: repository.host,
-    ...classification,
+    ...projectSettings,
     defaultPage,
     navigation,
     pages,

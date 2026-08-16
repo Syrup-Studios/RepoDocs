@@ -9,6 +9,7 @@ import {
 import { GameDirectoryPage } from "@/components/game-directory-page";
 import { DocumentationContent } from "@/components/documentation-content";
 import { DocumentationSearch } from "@/components/documentation-search";
+import { DocsNav } from "@/components/docs-nav";
 import { categorySegment, projectPageHref } from "@/lib/routes";
 import { repositoryCommitHref, repositoryFileHref } from "@/lib/repository-links";
 import type { SiteConfig } from "@/lib/config";
@@ -19,6 +20,7 @@ export type DirectorySelection = {
   category: string | null;
   general?: boolean;
   infoPage?: "docs";
+  documentationPath?: string;
 };
 
 function label(value: string): string {
@@ -54,7 +56,9 @@ function projectCard(project: CachedProject) {
 }
 
 export default function HomePage({ documentation, selection, site }: { documentation: GeneratedDocumentation; selection: DirectorySelection; site: SiteConfig }) {
-  const { projects, generatedAt, siteDocumentation: docsPage } = documentation;
+  const { projects, generatedAt, siteDocumentation: docsProject } = documentation;
+  const documentationPath = selection.documentationPath ?? docsProject.defaultPage;
+  const docsPage = docsProject.pages[documentationPath];
   const configuredTypes = [...new Set(projects.flatMap((project) => project.documentationType ? [project.documentationType] : []))];
   const documentationTypes = [...new Set(["minecraft", ...configuredTypes])];
   const generalProjects = projects.filter((project) => !project.documentationType || !project.category);
@@ -110,8 +114,10 @@ export default function HomePage({ documentation, selection, site }: { documenta
         </nav>
 
         <aside className="docs-sidebar">
-          <div className="game-sidebar-title">{showsHowItWorks ? "How it works" : "Games"}</div>
-          {!showsHowItWorks && (
+          <div className="game-sidebar-title">{showsHowItWorks ? "RepoDocs guide" : "Games"}</div>
+          {showsHowItWorks ? (
+            <DocsNav items={docsProject.navigation} basePath="/docs" currentPath={documentationPath} />
+          ) : (
             <nav className="docs-nav" aria-label="Games">
               {documentationTypes.map((type) => (
                 <a href={type === "minecraft" ? "/modpacks/" : `/${type}/`} key={type}>{label(type)}</a>
@@ -124,10 +130,10 @@ export default function HomePage({ documentation, selection, site }: { documenta
         {showsHowItWorks ? (
           <DocumentationContent
             page={docsPage}
-            referenceDate={generatedAt}
-            sourcePath="docs/index.md"
+            referenceDate={docsProject.builtAt}
+            sourcePath={docsPage.sourcePath}
             commitRevision={docsPage.history.updatedRevision}
-            sourceHref={repositoryFileHref(site.repository, docsPage.sourceRevision, "docs/index.md")}
+            sourceHref={repositoryFileHref(site.repository, docsProject.sourceRevision, docsPage.sourcePath)}
             commitHref={repositoryCommitHref(site.repository, docsPage.history.updatedRevision)}
           />
         ) : (

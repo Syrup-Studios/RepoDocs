@@ -1,3 +1,6 @@
 name: Via Romana
 slug: via-romana
 repository: https://github.com/RasaNovum/Via_Romana
+type: minecraft
+category: mod
+rootREADME: true

@@ -171,7 +171,7 @@ export async function readRepositoryFileHistory(
     runGit([
       "log",
       "--follow",
-      "--format=%H%x1f%aI%x1f%an%x1f%ae%x1e",
+      "--format=%H%x1f%cI%x1f%an%x1f%ae%x1e",
       "--",
       relativeFile,
     ], repositoryDirectory),
@@ -179,7 +179,7 @@ export async function readRepositoryFileHistory(
       "log",
       "-1",
       "--diff-filter=A",
-      "--format=%aI",
+      "--format=%cI",
       "--",
       relativeFile,
     ], repositoryDirectory),

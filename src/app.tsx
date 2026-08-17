@@ -1,12 +1,11 @@
 import HomePage, { type DirectorySelection } from "@/app/page";
 import { DocumentationPage } from "@/components/documentation-page";
 import { NotFound } from "@/components/not-found";
-import { ProjectOverviewPage } from "@/components/project-overview-page";
 import generatedData from "@/generated/docs.json";
 import config from "@/repodocs.config";
 import {
   categorySegment,
-  projectOverviewHref,
+  projectRootHref,
   projectPageHref,
 } from "@/lib/routes";
 import { defaultDocumentationContext } from "@/lib/documentation-context";
@@ -71,7 +70,12 @@ export function resolvePage(pathname: string) {
     const version = project.versions[parts[3]];
     const locale = version?.locales[localeCode];
     if (!version || !locale) return { type: "not-found" as const };
-    if (parts.length === 4) return { type: "project-overview" as const, project, version, locale };
+    if (parts.length === 4) {
+      const currentPath = locale.defaultPage;
+      const page = locale.pages[currentPath];
+      if (!page) return { type: "not-found" as const };
+      return { type: "documentation" as const, project, version, locale, page, currentPath };
+    }
     if (parts[4] !== "docs") return { type: "not-found" as const };
     const currentPath = parts.slice(5).join("/") || locale.defaultPage;
     const page = locale.pages[currentPath];
@@ -116,14 +120,6 @@ export function pageMetadata(pathname: string): { title: string; description: st
       favicon: resolved.project.favicon,
     };
   }
-  if (resolved.type === "project-overview") {
-    const landingPage = resolved.locale.pages[resolved.locale.defaultPage];
-    return {
-      title: `${resolved.project.name} · ${config.site.name}`,
-      description: resolved.project.summary || landingPage?.description || `${resolved.project.name} documentation.`,
-      favicon: resolved.project.favicon,
-    };
-  }
   return {
     title: `Page not found · ${config.site.name}`,
     description: "This documentation page does not exist.",
@@ -134,9 +130,6 @@ export function pageMetadata(pathname: string): { title: string; description: st
 export function App({ pathname }: { pathname: string }) {
   const resolved = resolvePage(pathname);
   if (resolved.type === "home") return <HomePage documentation={documentation} selection={resolved.selection} site={config.site} />;
-  if (resolved.type === "project-overview") {
-    return <ProjectOverviewPage projects={documentation.projects} project={resolved.project} version={resolved.version} locale={resolved.locale} site={config.site} />;
-  }
   if (resolved.type === "documentation") {
     return <DocumentationPage projects={documentation.projects} project={resolved.project} version={resolved.version} locale={resolved.locale} page={resolved.page} currentPath={resolved.currentPath} site={config.site} />;
   }
@@ -159,7 +152,7 @@ export function staticPaths(): string[] {
     ]),
     ...documentation.projects.flatMap((project) =>
       Object.values(project.versions).flatMap((version) => Object.values(version.locales).flatMap((locale) => [
-        projectOverviewHref(project, locale.code, version.id),
+        projectRootHref(project, locale.code, version.id),
         ...Object.keys(locale.pages).map((pagePath) => projectPageHref(project, pagePath, version.id, locale.code)),
       ])),
     ),

@@ -52,7 +52,7 @@ Other problems stop the build. These problems include an invalid repository file
 The final website contains:
 
 - A directory page for each known documentation type and category.
-- One project overview route for every version and language combination.
+- One short project route for every version and language combination. It opens the default documentation page.
 - One canonical route for every version, language, and documentation page combination.
 - A static 404 page.
 - In-browser search across page titles, project names, descriptions, and rendered page text.

@@ -10,7 +10,7 @@ import { GameDirectoryPage } from "@/components/game-directory-page";
 import { DocumentationContent } from "@/components/documentation-content";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { DocsNav } from "@/components/docs-nav";
-import { categorySegment, projectOverviewHref } from "@/lib/routes";
+import { categorySegment, projectPageHref } from "@/lib/routes";
 import { defaultDocumentationContext } from "@/lib/documentation-context";
 import { repositoryCommitHref, repositoryFileHref } from "@/lib/repository-links";
 import type { SiteConfig } from "@/lib/config";
@@ -52,8 +52,8 @@ function projectCard(project: CachedProject) {
         </div>
       </div>
       <div className="project-actions">
-        <a className="open-docs" href={projectOverviewHref(project)}>
-          Open project <ArrowRight size={16} />
+        <a className="open-docs" href={projectPageHref(project, locale.defaultPage, version.id, locale.code)}>
+          Open docs <ArrowRight size={16} />
         </a>
         <a href={project.repositoryUrl} target="_blank" rel="noreferrer" aria-label={`${project.name} repository`}>
           <Github size={17} /><ExternalLink size={12} />

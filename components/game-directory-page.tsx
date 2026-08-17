@@ -1,7 +1,7 @@
 import { BookOpen, Github } from "lucide-react";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { ProjectTree } from "@/components/project-tree";
-import { projectDocumentationBasePath, projectOverviewHref } from "@/lib/routes";
+import { projectDocumentationBasePath, projectPageHref } from "@/lib/routes";
 import { defaultDocumentationContext } from "@/lib/documentation-context";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedProject } from "@/lib/types";
@@ -67,8 +67,9 @@ export function GameDirectoryPage({
         <div className="game-sidebar-title">{activeCategory?.label ?? "Projects"}</div>
         <nav className="game-project-list" aria-label={`${activeCategory?.label ?? game} projects`}>
           {visibleProjects.map((project) => {
+            const { version, locale } = defaultDocumentationContext(project);
             const navigation = projectNavigation(project);
-            const href = projectOverviewHref(project);
+            const href = projectPageHref(project, locale.defaultPage, version.id, locale.code);
             if (navigation.length === 0) {
               return <a className="project-tree-link" href={href} key={project.slug}>{project.name}</a>;
             }
@@ -77,7 +78,7 @@ export function GameDirectoryPage({
                 name={project.name}
                 href={href}
                 navigation={navigation}
-                basePath={projectDocumentationBasePath(project)}
+                basePath={projectDocumentationBasePath(project, version.id, locale.code)}
                 currentPath="__category__"
                 key={project.slug}
               />

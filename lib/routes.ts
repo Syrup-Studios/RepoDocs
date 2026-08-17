@@ -10,7 +10,7 @@ export function categorySegment(category: string | null): string | null {
   return category;
 }
 
-export function projectOverviewHref(
+export function projectRootHref(
   project: RoutableProject,
   locale = project.defaultLocale,
   version = project.defaultVersion,

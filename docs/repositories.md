@@ -267,7 +267,7 @@ The canonical documentation route is:
 /{locale}/project/{slug}/{version}/docs/{page}
 ```
 
-The project overview uses the same version context:
+The shorter project route opens the default documentation page for the selected version and language:
 
 ```text
 /{locale}/project/{slug}/{version}/
@@ -279,11 +279,11 @@ For example, `/en/project/my-project/1.21.1/docs/configuration/` opens the Engli
 
 Classification controls where a project appears in the directory. It does not change the project URL:
 
-| Classification | Directory route | Example overview route |
+| Classification | Directory route | Example documentation route |
 | --- | --- | --- |
-| `minecraft` and `mod` | `/mods/` | `/en/project/my-project/latest/` |
-| `minecraft` and `modpack` | `/modpacks/` | `/en/project/my-project/latest/` |
-| No `type` and `category` | `/projects/` | `/en/project/my-project/latest/` |
+| `minecraft` and `mod` | `/mods/` | `/en/project/my-project/latest/docs/` |
+| `minecraft` and `modpack` | `/modpacks/` | `/en/project/my-project/latest/docs/` |
+| No `type` and `category` | `/projects/` | `/en/project/my-project/latest/docs/` |
 
 Other type and category values create matching directory pages. Minecraft has a dedicated category view with Mods and Modpacks tabs.
 

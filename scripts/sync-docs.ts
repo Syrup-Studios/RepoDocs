@@ -291,15 +291,6 @@ async function copyModFavicon(
   }
 
   const candidates: string[] = [];
-  try {
-    const entries = await readdir(path.join(resourcesRoot, "assets"), { withFileTypes: true });
-    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-      if (entry.isDirectory()) candidates.push(path.join("assets", entry.name, "icon.png"));
-    }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-  }
-
   const fabricMetadata = path.join(resourcesRoot, "fabric.mod.json");
   try {
     const metadataStats = await lstat(fabricMetadata);
@@ -326,6 +317,15 @@ async function copyModFavicon(
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
+  }
+
+  try {
+    const entries = await readdir(path.join(resourcesRoot, "assets"), { withFileTypes: true });
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (entry.isDirectory()) candidates.push(path.join("assets", entry.name, "icon.png"));
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 
   for (const candidate of [...new Set(candidates)]) {

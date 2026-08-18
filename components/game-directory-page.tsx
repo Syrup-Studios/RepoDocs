@@ -1,6 +1,7 @@
 import { BookOpen, Github } from "lucide-react";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { ProjectTree } from "@/components/project-tree";
+import { SiteFooter } from "@/components/site-footer";
 import { projectDocumentationBasePath, projectPageHref } from "@/lib/routes";
 import { defaultDocumentationContext } from "@/lib/documentation-context";
 import type { SiteConfig } from "@/lib/config";
@@ -92,6 +93,7 @@ export function GameDirectoryPage({
         <h1>{activeCategory?.label ?? game}</h1>
         <p>Choose a project from the sidebar.</p>
       </main>
+      <SiteFooter name={site.name} />
     </div>
   );
 }

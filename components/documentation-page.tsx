@@ -3,6 +3,7 @@ import { DocumentationContent } from "@/components/documentation-content";
 import { DocsNav } from "@/components/docs-nav";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { ProjectTree } from "@/components/project-tree";
+import { SiteFooter } from "@/components/site-footer";
 import { defaultDocumentationContext } from "@/lib/documentation-context";
 import { projectDocumentationBasePath, projectPageHref } from "@/lib/routes";
 import {
@@ -199,6 +200,7 @@ export function DocumentationPage({
         editHref={repositoryFileHref(project.repositoryUrl, version.branch, page.sourcePath, "branch")}
         reportHref={repositoryIssuesHref(project.repositoryUrl)}
       />
+      <SiteFooter name={site.name} />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { GameDirectoryPage } from "@/components/game-directory-page";
 import { DocumentationContent } from "@/components/documentation-content";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { DocsNav } from "@/components/docs-nav";
+import { SiteFooter } from "@/components/site-footer";
 import { categorySegment, projectPageHref } from "@/lib/routes";
 import { defaultDocumentationContext } from "@/lib/documentation-context";
 import { repositoryCommitHref, repositoryFileHref } from "@/lib/repository-links";
@@ -179,6 +180,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
             </aside>
           </>
         )}
+        <SiteFooter name={site.name} />
       </div>
     );
   }
@@ -229,7 +231,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
         </section>
       </main>
 
-      <footer className="portal-footer"><span>{site.name}</span><p>The repository owns the documentation.</p></footer>
+      <SiteFooter name={site.name} />
     </div>
   );
 }

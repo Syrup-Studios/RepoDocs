@@ -4,9 +4,17 @@ import { NotFound } from "@/components/not-found";
 import generatedData from "@/generated/docs.json";
 import config from "@/repodocs.config";
 import {
-  categorySegment,
+  categoryLabel,
+  directoryCategoryNames,
+  directoryDefinition,
+  directoryHref,
+  directoryLabel,
+  firstClassDirectories,
+} from "@/lib/classification";
+import {
   projectRootHref,
   projectPageHref,
+  classifiedCategoryFromSegment,
 } from "@/lib/routes";
 import { defaultDocumentationContext } from "@/lib/documentation-context";
 import type { GeneratedDocumentation } from "@/lib/types";
@@ -15,18 +23,15 @@ const documentation = generatedData as unknown as GeneratedDocumentation;
 const siteDocumentation = defaultDocumentationContext(documentation.siteDocumentation);
 
 function knownTypes(): string[] {
-  return [...new Set(["minecraft", ...documentation.projects.flatMap((project) => project.documentationType ? [project.documentationType] : [])])];
+  return [...new Set([
+    ...firstClassDirectories().map((directory) => directory.type),
+    ...documentation.projects.flatMap((project) => project.documentationType ? [project.documentationType] : []),
+  ])];
 }
 
 function knownCategories(type: string): string[] {
   const configured = documentation.projects.flatMap((project) => project.documentationType === type && project.category ? [project.category] : []);
-  return [...new Set(type === "minecraft" ? ["mod", "modpack", ...configured] : configured)];
-}
-
-function categoryFromSegment(segment: string): string {
-  if (segment === "mods") return "mod";
-  if (segment === "modpacks") return "modpack";
-  return segment;
+  return directoryCategoryNames(type, configured);
 }
 
 function directorySelection(parts: string[]): DirectorySelection | null {
@@ -34,11 +39,12 @@ function directorySelection(parts: string[]): DirectorySelection | null {
   if (parts.length === 1 && parts[0] === "docs") return { type: null, category: null, infoPage: "docs" };
   if (parts.length === 1 && parts[0] === "projects") return { type: null, category: null, general: true };
   if (parts.length === 1 && (parts[0] === "mods" || parts[0] === "modpacks")) {
-    return { type: "minecraft", category: categoryFromSegment(parts[0]) };
+    return { type: "minecraft", category: classifiedCategoryFromSegment("minecraft", parts[0]) };
   }
   if (!knownTypes().includes(parts[0]) || parts.length > 2) return null;
-  if (parts.length === 1) return { type: parts[0], category: null };
-  const category = categoryFromSegment(parts[1]);
+  const definition = directoryDefinition(parts[0]);
+  if (parts.length === 1) return { type: parts[0], category: definition?.defaultCategory ?? null };
+  const category = classifiedCategoryFromSegment(parts[0], parts[1]);
   if (!knownCategories(parts[0]).includes(category)) return null;
   return { type: parts[0], category };
 }
@@ -104,7 +110,11 @@ export function pageMetadata(pathname: string): { title: string; description: st
     }
     const directoryName = resolved.selection.general
       ? "Projects"
-      : resolved.selection.category ?? resolved.selection.type;
+      : resolved.selection.category
+        ? categoryLabel(resolved.selection.type, resolved.selection.category)
+        : resolved.selection.type
+          ? directoryLabel(resolved.selection.type)
+          : null;
     const title = directoryName
       ? `${directoryName.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())} · ${config.site.name}`
       : config.site.name;
@@ -146,9 +156,10 @@ export function staticPaths(): string[] {
     "/projects/",
     "/mods/",
     "/modpacks/",
-    ...knownTypes().filter((type) => type !== "minecraft").flatMap((type) => [
+    ...firstClassDirectories().filter((directory) => directory.type !== "minecraft").map((directory) => directory.href),
+    ...knownTypes().filter((type) => !directoryDefinition(type)).flatMap((type) => [
       `/${type}/`,
-      ...knownCategories(type).map((category) => `/${type}/${categorySegment(category)}/`),
+      ...knownCategories(type).map((category) => directoryHref(type, category)),
     ]),
     ...documentation.projects.flatMap((project) =>
       Object.values(project.versions).flatMap((version) => Object.values(version.locales).flatMap((locale) => [

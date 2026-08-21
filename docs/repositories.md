@@ -91,7 +91,7 @@ A project that also publishes on ModdedMC can use `docs/sinytra-wiki.json` and t
 | `name` | Project name shown on the website. |
 | `summary` | Plain-text project description with at most 240 characters. |
 | `type` | Project type. Set it together with `category`. |
-| `category` | Project category. A Minecraft project must use `mod` or `modpack`. |
+| `category` | Project category. Minecraft uses `mod` or `modpack`. Discord uses `bot`. |
 | `modId` | Lowercase Minecraft mod ID. |
 | `owners` | GitHub users or organizations that own the project. |
 | `gameVersions` | Supported game versions, ordered from newest to oldest. This does not create documentation versions. |
@@ -106,7 +106,7 @@ A project that also publishes on ModdedMC can use `docs/sinytra-wiki.json` and t
 
 Set `name` and `summary` to let the source repository own the public project identity. The summary is plain text. It must fit on one line and cannot exceed 240 characters.
 
-Set `type` and `category` together. Both values must use lowercase letters, numbers, or hyphens. A Minecraft project must use `mod` or `modpack` as its category.
+Set `type` and `category` together. Both values must use lowercase letters, numbers, or hyphens. A Minecraft project must use `mod` or `modpack`. A Discord project must use `bot`.
 
 Use `modId` for the ID found in Minecraft resources and loader metadata. Use `owners` for GitHub users or organizations that maintain the project. RepoDocs links each owner to its GitHub profile. The project sidebar groups repositories by the owner or organization namespace in the registered `repository` URL. For example, `https://github.com/example/my-project` is grouped under `example`. The `owners` metadata list does not control sidebar grouping.
 
@@ -170,7 +170,7 @@ footer:
 | `slug` | The stable project URL segment. Use 1 to 63 lowercase letters, numbers, or hyphens. The first character must be a letter or number. Each project must use a unique slug. |
 | `repository` | The public HTTPS URL of the Git repository. |
 | `type` | The default project type. Set it together with `category`. |
-| `category` | The default project category. A Minecraft project must use `mod` or `modpack`. |
+| `category` | The default project category. Minecraft uses `mod` or `modpack`. Discord uses `bot`. |
 | `modId` | The lowercase Minecraft mod ID. |
 | `owners` | GitHub users or organizations that own the project. |
 | `gameVersions` | Supported game versions, ordered from newest to oldest. |
@@ -283,9 +283,19 @@ Classification controls where a project appears in the directory. It does not ch
 | --- | --- | --- |
 | `minecraft` and `mod` | `/mods/` | `/en/project/my-project/latest/docs/` |
 | `minecraft` and `modpack` | `/modpacks/` | `/en/project/my-project/latest/docs/` |
+| `discord` and `bot` | `/discord/` | `/en/project/my-project/latest/docs/` |
 | No `type` and `category` | `/projects/` | `/en/project/my-project/latest/docs/` |
 
-Other type and category values create matching directory pages. Minecraft has a dedicated category view with Mods and Modpacks tabs.
+Other type and category values create matching directory pages. Minecraft and Discord have dedicated classified views. Minecraft has Mods and Modpacks tabs. Discord has a Bots tab and groups projects by repository owner.
+
+A Discord bot registration uses this classification:
+
+```yaml
+type: discord
+category: bot
+```
+
+RepoDocs publishes it under `/discord/`. The bot's documentation still uses the normal versioned project route.
 
 For a Minecraft mod, RepoDocs looks for `src/main/resources/assets/<mod-id>/icon.png`. It uses the first matching file as the favicon. If the standard path does not contain an icon, RepoDocs checks the icon path in Fabric, Forge, and NeoForge metadata.
 

@@ -4,6 +4,7 @@ import { DocsNav } from "@/components/docs-nav";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { GroupedProjectList } from "@/components/grouped-project-list";
 import { SiteFooter } from "@/components/site-footer";
+import { directoryCategory, directoryDefinition } from "@/lib/classification";
 import { projectDocumentationBasePath, projectPageHref } from "@/lib/routes";
 import {
   repositoryCommitHref,
@@ -65,19 +66,21 @@ export function DocumentationPage({
 }) {
   const activeNavigation = locale.navigation.find((item) => includesPage(item, currentPath));
   const repositoryName = new URL(project.repositoryUrl).pathname.replace(/^\//, "");
-  const isMinecraft = project.documentationType === "minecraft";
-  const categoryProjects = isMinecraft
-    ? projects.filter((item) => item.documentationType === "minecraft" && item.category === project.category)
+  const directory = directoryDefinition(project.documentationType);
+  const isClassified = Boolean(directory);
+  const categoryProjects = isClassified
+    ? projects.filter((item) => item.documentationType === project.documentationType && item.category === project.category)
     : [];
-  const categoryLabel = project.category === "modpack" ? "Modpacks" : project.category === "mod" ? "Mods" : "Projects";
+  const currentCategory = directoryCategory(project.documentationType, project.category);
+  const currentCategoryLabel = currentCategory?.label ?? "Projects";
   const versions = Object.values(project.versions);
   const locales = Object.values(version.locales);
 
   return (
     <div className="docs-shell">
       <header className="docs-header">
-        <a className="material-brand" href="/"><span className="material-logo"><BookOpen size={19} /></span><span>{isMinecraft ? site.name : project.name}</span></a>
-        {isMinecraft && <span className="game-header-title">Minecraft</span>}
+        <a className="material-brand" href="/"><span className="material-logo"><BookOpen size={19} /></span><span>{isClassified ? site.name : project.name}</span></a>
+        {directory && <span className="game-header-title">{directory.label}</span>}
         <div className="docs-actions">
           <DocumentationSearch projects={projects} />
           <a className="header-repository" href={project.repositoryUrl} target="_blank" rel="noreferrer" title="Open repository"><Github size={20} /><span>{repositoryName}</span></a>
@@ -85,11 +88,10 @@ export function DocumentationPage({
       </header>
 
       <nav className="docs-tabs project-tabs-bar" aria-label="Documentation sections">
-        {isMinecraft ? (
-          <>
-            <a className={project.category === "modpack" ? "active" : ""} href="/modpacks/">Modpacks</a>
-            <a className={project.category === "mod" ? "active" : ""} href="/mods/">Mods</a>
-          </>
+        {directory ? (
+          directory.categories.map((category) => (
+            <a className={project.category === category.name ? "active" : ""} href={category.href} key={category.name}>{category.label}</a>
+          ))
         ) : locale.navigation.map((item, index) => {
           const target = firstPage(item);
           if (target === null) return null;
@@ -146,12 +148,12 @@ export function DocumentationPage({
       </nav>
 
       <aside className="docs-sidebar">
-        {isMinecraft ? (
+        {isClassified ? (
           <div className="classified-docs-navigation">
-            <div className="game-sidebar-title">{categoryLabel}</div>
+            <div className="game-sidebar-title">{currentCategoryLabel}</div>
             <GroupedProjectList
               projects={categoryProjects}
-              ariaLabel={`${categoryLabel} projects`}
+              ariaLabel={`${currentCategoryLabel} projects`}
               currentProject={project}
               currentVersion={version}
               currentLocale={locale}

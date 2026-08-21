@@ -1,3 +1,5 @@
+import { directoryCategory } from "@/lib/classification";
+
 type RoutableProject = {
   slug: string;
   defaultLocale: string;
@@ -8,6 +10,13 @@ export function categorySegment(category: string | null): string | null {
   if (category === "mod") return "mods";
   if (category === "modpack") return "modpacks";
   return category;
+}
+
+export function classifiedCategoryFromSegment(type: string, segment: string): string {
+  if (type === "minecraft" && segment === "mods") return "mod";
+  if (type === "minecraft" && segment === "modpacks") return "modpack";
+  const category = directoryCategory(type, segment);
+  return category?.name ?? segment;
 }
 
 export function projectRootHref(

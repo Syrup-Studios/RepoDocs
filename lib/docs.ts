@@ -3,6 +3,7 @@ import path from "node:path";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import { parse as parseYaml } from "yaml";
+import { validateClassification } from "@/lib/classification";
 import sanitizeHtml from "sanitize-html";
 import { createMarkdown, prepareMarkdown, slugifyHeading, type Heading } from "@/lib/markdown";
 import { parseFooterLinks } from "@/lib/footer";
@@ -248,9 +249,7 @@ export async function readProjectConfiguration(
     if (!/^[a-z0-9][a-z0-9-]*$/.test(documentationType) || !/^[a-z0-9][a-z0-9-]*$/.test(category)) {
       throw new Error("The type and category in docs/repodocs.yml must use lowercase letters, numbers, or hyphens.");
     }
-    if (documentationType === "minecraft" && category !== "mod" && category !== "modpack") {
-      throw new Error('Minecraft documentation must use category: "mod" or category: "modpack".');
-    }
+    validateClassification(documentationType, category, "docs/repodocs.yml");
   }
   return {
     documentationFormat: compatibleDefaults.documentationFormat,

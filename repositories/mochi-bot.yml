@@ -1,0 +1,6 @@
+name: Mochi Bot
+slug: mochi-bot
+repository: https://github.com/SodaSyrup/mochi-bot
+type: discord
+category: bot
+rootREADME: true

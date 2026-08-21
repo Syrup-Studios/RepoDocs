@@ -3,6 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { RepositoryConfig, RepositorySource } from "@/lib/config";
+import { validateClassification } from "@/lib/classification";
 import { parseFooterLinks } from "@/lib/footer";
 import type { ProjectLicense, ProjectLicenses, ProjectPlatformName, ProjectPlatforms } from "@/lib/types";
 
@@ -246,9 +247,7 @@ function validateRepositoryConfig(value: unknown, location: string): RepositoryC
     if (!validClassification.test(documentationType) || !validClassification.test(category)) {
       throw new Error(`${location} type and category must use lowercase letters, numbers, or hyphens.`);
     }
-    if (documentationType === "minecraft" && category !== "mod" && category !== "modpack") {
-      throw new Error(`${location} must use category "mod" or "modpack" for Minecraft documentation.`);
-    }
+    validateClassification(`${documentationType}`, `${category}`, location);
   }
 
   return {

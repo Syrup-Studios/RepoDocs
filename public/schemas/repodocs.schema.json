@@ -131,6 +131,15 @@
       "then": {
         "properties": { "category": { "enum": ["mod", "modpack"] } }
       }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": { "type": { "const": "discord" } }
+      },
+      "then": {
+        "properties": { "category": { "const": "bot" } }
+      }
     }
   ],
   "$defs": {

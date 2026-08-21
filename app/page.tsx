@@ -11,7 +11,15 @@ import { DocumentationContent } from "@/components/documentation-content";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { DocsNav } from "@/components/docs-nav";
 import { SiteFooter } from "@/components/site-footer";
-import { categorySegment, projectPageHref } from "@/lib/routes";
+import {
+  categoryLabel,
+  directoryCategoryNames,
+  directoryDefinition,
+  directoryHref,
+  directoryLabel,
+  firstClassDirectories,
+} from "@/lib/classification";
+import { projectPageHref } from "@/lib/routes";
 import { defaultDocumentationContext } from "@/lib/documentation-context";
 import { repositoryCommitHref, repositoryFileHref } from "@/lib/repository-links";
 import type { SiteConfig } from "@/lib/config";
@@ -26,10 +34,9 @@ export type DirectorySelection = {
 };
 
 function label(value: string): string {
-  if (value === "minecraft") return "Minecraft";
   if (value === "mod") return "Mods";
   if (value === "modpack") return "Modpacks";
-  return value.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return directoryLabel(value);
 }
 
 function projectCard(project: CachedProject) {
@@ -70,13 +77,16 @@ export default function HomePage({ documentation, selection, site }: { documenta
   const documentationPath = selection.documentationPath ?? docsLocale.defaultPage;
   const docsPage = docsLocale.pages[documentationPath];
   const configuredTypes = [...new Set(projects.flatMap((project) => project.documentationType ? [project.documentationType] : []))];
-  const documentationTypes = [...new Set(["minecraft", ...configuredTypes])];
+  const documentationTypes = [...new Set([
+    ...firstClassDirectories().map((directory) => directory.type),
+    ...configuredTypes,
+  ])];
   const generalProjects = projects.filter((project) => !project.documentationType || !project.category);
   const selectedType = selection.general ? null : selection.type;
   const typeProjects = selectedType ? projects.filter((project) => project.documentationType === selectedType) : [];
-  const categoryNames = selectedType === "minecraft"
-    ? [...new Set(["modpack", "mod", ...typeProjects.flatMap((project) => project.category ? [project.category] : [])])]
-    : [...new Set(typeProjects.flatMap((project) => project.category ? [project.category] : []))];
+  const categoryNames = selectedType
+    ? directoryCategoryNames(selectedType, typeProjects.flatMap((project) => project.category ? [project.category] : []))
+    : [];
   const visibleProjects = selection.general
     ? generalProjects
     : selectedType
@@ -87,19 +97,20 @@ export default function HomePage({ documentation, selection, site }: { documenta
     ? "General projects"
     : selectedType
       ? selection.category ? label(selection.category) : label(selectedType)
-      : "Choose a game";
+      : "Choose a category";
 
-  if (selectedType === "minecraft") {
+  const selectedDirectory = selectedType ? directoryDefinition(selectedType) : null;
+  if (selectedDirectory) {
     return (
       <GameDirectoryPage
-        game="Minecraft"
+        game={selectedDirectory.label}
         projects={typeProjects}
         searchProjects={projects}
         selectedCategory={selection.category}
         categories={categoryNames.map((category) => ({
           name: category,
-          label: label(category),
-          href: `/${categorySegment(category)}/`,
+          label: categoryLabel(selectedType, category),
+          href: directoryHref(selectedDirectory.type, category),
         }))}
         site={site}
       />
@@ -124,13 +135,13 @@ export default function HomePage({ documentation, selection, site }: { documenta
         </nav>
 
         <aside className="docs-sidebar">
-          <div className="game-sidebar-title">{showsHowItWorks ? "RepoDocs guide" : "Games"}</div>
+          <div className="game-sidebar-title">{showsHowItWorks ? "RepoDocs guide" : "Categories"}</div>
           {showsHowItWorks ? (
             <DocsNav items={docsLocale.navigation} basePath="/docs" currentPath={documentationPath} />
           ) : (
-            <nav className="docs-nav" aria-label="Games">
+            <nav className="docs-nav" aria-label="Categories">
               {documentationTypes.map((type) => (
-                <a href={type === "minecraft" ? "/modpacks/" : `/${type}/`} key={type}>{label(type)}</a>
+                <a href={directoryHref(type)} key={type}>{label(type)}</a>
               ))}
               {generalProjects.length > 0 && <a href="/projects/">General</a>}
             </nav>
@@ -152,13 +163,13 @@ export default function HomePage({ documentation, selection, site }: { documenta
               <article className="markdown-body">
                 <h1>{site.name}</h1>
                 <p>{site.description}</p>
-                <h2 id="choose-a-game">Choose a game</h2>
+                <h2 id="choose-a-category">Choose a category</h2>
                 <div className="home-game-list">
                   {documentationTypes.map((type) => {
                     const count = projects.filter((project) => project.documentationType === type).length;
                     return (
-                      <a href={type === "minecraft" ? "/modpacks/" : `/${type}/`} key={type}>
-                        <span><b>{label(type)}</b><small>{type === "minecraft" ? "Mods and modpacks" : `${label(type)} projects`}</small></span>
+                      <a href={directoryHref(type)} key={type}>
+                        <span><b>{label(type)}</b><small>{directoryDefinition(type)?.description ?? `${label(type)} projects`}</small></span>
                         <small>{count} project{count === 1 ? "" : "s"}</small>
                         <ArrowRight size={16} />
                       </a>
@@ -176,7 +187,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
             </main>
             <aside className="page-toc">
               <b>Table of contents</b>
-              <a href="#choose-a-game">Choose a game</a>
+              <a href="#choose-a-category">Choose a category</a>
             </aside>
           </>
         )}
@@ -211,7 +222,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
               <a className={!selection.category ? "active" : ""} href={`/${selectedType}/`}>All<span>{typeProjects.length}</span></a>
               {categoryNames.map((category) => {
                 const count = typeProjects.filter((project) => project.category === category).length;
-                return <a className={selection.category === category ? "active" : ""} href={`/${selectedType}/${categorySegment(category)}/`} key={category}>{label(category)}<span>{count}</span></a>;
+                return <a className={selection.category === category ? "active" : ""} href={directoryHref(selectedType, category)} key={category}>{categoryLabel(selectedType, category)}<span>{count}</span></a>;
               })}
             </nav>
           )}

@@ -2,9 +2,8 @@ import { BookOpen, Github } from "lucide-react";
 import { DocumentationContent } from "@/components/documentation-content";
 import { DocsNav } from "@/components/docs-nav";
 import { DocumentationSearch } from "@/components/documentation-search";
-import { ProjectTree } from "@/components/project-tree";
+import { GroupedProjectList } from "@/components/grouped-project-list";
 import { SiteFooter } from "@/components/site-footer";
-import { defaultDocumentationContext } from "@/lib/documentation-context";
 import { projectDocumentationBasePath, projectPageHref } from "@/lib/routes";
 import {
   repositoryCommitHref,
@@ -32,14 +31,6 @@ function firstPage(item: NavItem): string | null {
 function includesPage(item: NavItem, pagePath: string): boolean {
   if (item.type === "page") return item.path === pagePath;
   return item.children.some((child) => includesPage(child, pagePath));
-}
-
-function projectNavigation(project: CachedProject, locale: CachedDocumentationLocale): NavItem[] {
-  const root = locale.navigation.length === 1 ? locale.navigation[0] : null;
-  const items = root?.type === "section" && root.title.toLowerCase() === project.name.toLowerCase()
-    ? root.children
-    : locale.navigation;
-  return items.filter((item) => item.type !== "page" || item.path !== locale.defaultPage);
 }
 
 function pageForContext(
@@ -158,26 +149,14 @@ export function DocumentationPage({
         {isMinecraft ? (
           <div className="classified-docs-navigation">
             <div className="game-sidebar-title">{categoryLabel}</div>
-            {categoryProjects.map((listedProject) => {
-              const isCurrent = listedProject.slug === project.slug;
-              const context = isCurrent ? { version, locale } : defaultDocumentationContext(listedProject);
-              const navigation = projectNavigation(listedProject, context.locale);
-              const href = projectPageHref(listedProject, context.locale.defaultPage, context.version.id, context.locale.code);
-              if (navigation.length === 0) {
-                return <a className={isCurrent ? "project-tree-link active" : "project-tree-link"} href={href} key={listedProject.slug}>{listedProject.name}</a>;
-              }
-              return (
-                <ProjectTree
-                  name={listedProject.name}
-                  href={href}
-                  navigation={navigation}
-                  basePath={projectDocumentationBasePath(listedProject, context.version.id, context.locale.code)}
-                  currentPath={isCurrent ? currentPath : "__closed__"}
-                  isCurrent={isCurrent}
-                  key={listedProject.slug}
-                />
-              );
-            })}
+            <GroupedProjectList
+              projects={categoryProjects}
+              ariaLabel={`${categoryLabel} projects`}
+              currentProject={project}
+              currentVersion={version}
+              currentLocale={locale}
+              currentPath={currentPath}
+            />
           </div>
         ) : (
           <DocsNav

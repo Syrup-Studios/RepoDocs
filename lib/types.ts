@@ -76,6 +76,7 @@ export type CachedProject = {
   favicon: string | null;
   repositoryUrl: string;
   repositoryHost: string;
+  repositoryOwner: string;
   documentationType: string | null;
   category: string | null;
   modId: string | null;

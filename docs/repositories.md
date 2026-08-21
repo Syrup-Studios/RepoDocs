@@ -108,7 +108,7 @@ Set `name` and `summary` to let the source repository own the public project ide
 
 Set `type` and `category` together. Both values must use lowercase letters, numbers, or hyphens. A Minecraft project must use `mod` or `modpack` as its category.
 
-Use `modId` for the ID found in Minecraft resources and loader metadata. Use `owners` for GitHub users or organizations that maintain the project. RepoDocs links each owner to its GitHub profile.
+Use `modId` for the ID found in Minecraft resources and loader metadata. Use `owners` for GitHub users or organizations that maintain the project. RepoDocs links each owner to its GitHub profile. The project sidebar groups repositories by the owner or organization namespace in the registered `repository` URL. For example, `https://github.com/example/my-project` is grouped under `example`. The `owners` metadata list does not control sidebar grouping.
 
 List `gameVersions` from newest to oldest. This field only describes compatibility. It does not publish branches or add items to the documentation version selector. Use `versions` for documentation branches. Use `loaders` for values such as `fabric`, `forge`, `neoforge`, or `quilt`. Use `tags` for project topics.
 

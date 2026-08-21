@@ -1,9 +1,7 @@
 import { BookOpen, Github } from "lucide-react";
 import { DocumentationSearch } from "@/components/documentation-search";
-import { ProjectTree } from "@/components/project-tree";
+import { GroupedProjectList } from "@/components/grouped-project-list";
 import { SiteFooter } from "@/components/site-footer";
-import { projectDocumentationBasePath, projectPageHref } from "@/lib/routes";
-import { defaultDocumentationContext } from "@/lib/documentation-context";
 import type { SiteConfig } from "@/lib/config";
 import type { CachedProject } from "@/lib/types";
 
@@ -12,15 +10,6 @@ type GameCategory = {
   label: string;
   href: string;
 };
-
-function projectNavigation(project: CachedProject) {
-  const { locale } = defaultDocumentationContext(project);
-  const root = locale.navigation.length === 1 ? locale.navigation[0] : null;
-  const items = root?.type === "section" && root.title.toLowerCase() === project.name.toLowerCase()
-    ? root.children
-    : locale.navigation;
-  return items.filter((item) => item.type !== "page" || item.path !== locale.defaultPage);
-}
 
 export function GameDirectoryPage({
   game,
@@ -66,26 +55,10 @@ export function GameDirectoryPage({
 
       <aside className="docs-sidebar game-project-sidebar">
         <div className="game-sidebar-title">{activeCategory?.label ?? "Projects"}</div>
-        <nav className="game-project-list" aria-label={`${activeCategory?.label ?? game} projects`}>
-          {visibleProjects.map((project) => {
-            const { version, locale } = defaultDocumentationContext(project);
-            const navigation = projectNavigation(project);
-            const href = projectPageHref(project, locale.defaultPage, version.id, locale.code);
-            if (navigation.length === 0) {
-              return <a className="project-tree-link" href={href} key={project.slug}>{project.name}</a>;
-            }
-            return (
-              <ProjectTree
-                name={project.name}
-                href={href}
-                navigation={navigation}
-                basePath={projectDocumentationBasePath(project, version.id, locale.code)}
-                currentPath="__category__"
-                key={project.slug}
-              />
-            );
-          })}
-        </nav>
+        <GroupedProjectList
+          projects={visibleProjects}
+          ariaLabel={`${activeCategory?.label ?? game} projects`}
+        />
         {visibleProjects.length === 0 && <p className="game-sidebar-empty">No {activeCategory?.label.toLowerCase() ?? "projects"} are published yet.</p>}
       </aside>
 

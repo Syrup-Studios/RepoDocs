@@ -223,9 +223,12 @@ button, input, select { font: inherit; }
 .game-directory-shell { min-height: 100vh; display: grid; grid-template: var(--docs-header-height) var(--docs-tabs-height) 1fr / calc(var(--docs-edge) + 255px) minmax(0, 1fr) calc(var(--docs-edge) + 267px); background: var(--page); }
 .game-header-title { margin-left: 18px; padding-left: 18px; color: #c8cbd1; border-left: 1px solid #343842; font-size: 15px; font-weight: 700; }
 .game-sidebar-title { min-height: 31px; color: var(--accent); font-size: 15px; font-weight: 700; }
-.game-project-list { display: flex; flex-direction: column; }
 .game-sidebar-empty { max-width: 195px; margin: 9px 0 0 13px; color: #7f8590; font-size: 13px; line-height: 1.6; }
 .classified-docs-navigation { width: 100%; }
+.grouped-project-list { display: flex; flex-direction: column; }
+.repository-owner-group + .repository-owner-group { margin-top: 13px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.repository-owner-heading { min-width: 0; min-height: 24px; margin: 0; overflow: hidden; color: #7f8590; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: .06em; line-height: 1.5; text-transform: uppercase; }
+.repository-owner-projects { display: flex; flex-direction: column; padding-left: 8px; }
 .project-tree { margin-left: 0; }
 .project-tree-link { min-height: 31px; display: flex; align-items: center; color: #aeb2bb; font-size: 15px; }
 .project-tree-link:hover, .project-tree-link.active { color: var(--accent); }

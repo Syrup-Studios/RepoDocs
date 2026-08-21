@@ -19,7 +19,7 @@ This page is for RepoDocs site operators. Project owners only need to keep their
 RepoDocs creates these paths during a sync or build:
 
 - `.repodocs-cache/repositories/`: cached Git clones with all configured branches.
-- `generated/docs.json`: project identity, owners, compatibility, licenses with provenance, platform references, versions, locales, rendered pages, navigation, search content, and source history.
+- `generated/docs.json`: project identity, source repository host and owner, owners, compatibility, licenses with provenance, platform references, versions, locales, rendered pages, navigation, search content, and source history.
 - `public/repository-assets/<project>/<version>/`: copied files from each version's source `docs/` directory.
 - `dist/`: the deployable static website.
 

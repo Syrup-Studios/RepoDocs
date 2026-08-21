@@ -905,6 +905,7 @@ export async function buildDocumentation(
     favicon: null,
     repositoryUrl: repository.normalizedUrl.replace(/\.git$/, ""),
     repositoryHost: repository.host,
+    repositoryOwner: repository.owner,
     ...projectSettings,
     defaultVersion: versionId,
     defaultLocale,

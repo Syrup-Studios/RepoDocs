@@ -218,7 +218,7 @@ An explicit license in the site registration or `docs/repodocs.yml` always repla
 
 RepoDocs ignores symbolic links and license files larger than 512 KiB. It does not guess a license when no supported file exists.
 
-Set `platforms.modrinth.id` or `platforms.curseforge.id` to the project slug on that service. CurseForge also accepts its numeric project ID as a string. RepoDocs uses these references to create project links. Set `platforms.primary` when both services are present. Later platform synchronization will prefer this service when their name, summary, icon, or license differs. The primary service must have a matching project reference. Use `footer` only for additional links.
+Set `platforms.modrinth.id` or `platforms.curseforge.id` to the project slug on that service. CurseForge also accepts its numeric project ID as a string. RepoDocs adds supported platform links to each documentation page footer. For Minecraft mods and modpacks, RepoDocs uses the matching service route. It uses the numeric CurseForge project route when the ID contains only digits. Set `platforms.primary` when both services are present; this link appears first. The primary service must have a matching project reference. Later platform synchronization will prefer this service when its name, summary, icon, or license differs. Use `footer` for additional links.
 
 An omitted source field keeps its site-registration default. An explicit list such as `owners: []` or `tags: []` removes the registration list. A complete `licenses` or `platforms` object replaces the matching registration object.
 
@@ -298,7 +298,7 @@ For a Minecraft mod, RepoDocs looks for `src/main/resources/assets/<mod-id>/icon
 
 ## Add repository-wide footer links
 
-Project owners set `footer` in `docs/repodocs.yml`. A site operator can also provide a default footer in the project registration. Each item needs a label and an HTTP or HTTPS URL. Do not repeat Modrinth or CurseForge here when they are present in `platforms`.
+Project owners set `footer` in `docs/repodocs.yml`. A site operator can also provide default footer links in the project registration. Each item needs a label and an HTTP or HTTPS URL. The footer includes the configured project name, supported platform links, the source repository link, and the project license link when it has a URL. Custom footer links appear after these links. RepoDocs removes duplicate URLs; a custom label takes precedence for a matching URL.
 
 ```yaml
 footer:
@@ -310,9 +310,9 @@ footer:
     url: https://github.com/example/my-project
 ```
 
-RepoDocs uses the configured project name. It keeps the link order from the YAML file. The link block appears directly after the document and above its timestamps and source data.
+The link block appears directly after the document and above its timestamps and source data. Platform links appear first, with the primary platform first when set. The source and license links follow. Custom links keep their configured order.
 
-A footer in `docs/repodocs.yml` replaces the site-registration footer. Set `footer: []` in the source file to hide the registration footer. Footer labels must be unique within one list. URLs cannot contain credentials.
+A `footer` value in `docs/repodocs.yml` replaces the site-registration custom links. Set `footer: []` to remove those custom links. Platform, source, and project license links remain. Footer labels must be unique within one list. URLs cannot contain credentials.
 
 ## Next step
 

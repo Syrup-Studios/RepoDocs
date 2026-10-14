@@ -1,5 +1,53 @@
+import type { CachedProject, RepositoryFooterLink } from "@/lib/types";
+
 function repositoryBase(repositoryUrl: string): string {
   return repositoryUrl.replace(/\/+$/, "");
+}
+
+export function projectFooterLinks(project: CachedProject): RepositoryFooterLink[] {
+  const customLinks = project.footerLinks;
+  const customByHref = new Map(customLinks.map((link) => [link.url.replace(/\/+$/, ""), link]));
+  const links: RepositoryFooterLink[] = [];
+  const seen = new Set<string>();
+  const add = (label: string, url: string) => {
+    const key = url.replace(/\/+$/, "");
+    if (seen.has(key)) return;
+    seen.add(key);
+    links.push(customByHref.get(key) ?? { label, url });
+  };
+  const category = project.documentationType === "minecraft" ? project.category : null;
+  const platformNames = project.platforms.primary
+    ? [project.platforms.primary, project.platforms.primary === "modrinth" ? "curseforge" : "modrinth"] as const
+    : ["modrinth", "curseforge"] as const;
+
+  for (const platform of platformNames) {
+    const id = project.platforms[platform]?.id;
+    if (!id) continue;
+    if (platform === "modrinth" && category === "mod") add("Modrinth", `https://modrinth.com/mod/${id}`);
+    if (platform === "modrinth" && category === "modpack") add("Modrinth", `https://modrinth.com/modpack/${id}`);
+    if (platform === "curseforge" && /^\d+$/.test(id)) {
+      add("CurseForge", `https://www.curseforge.com/projects/${id}`);
+    } else if (platform === "curseforge" && category === "mod") {
+      add("CurseForge", `https://www.curseforge.com/minecraft/mc-mods/${id}`);
+    } else if (platform === "curseforge" && category === "modpack") {
+      add("CurseForge", `https://www.curseforge.com/minecraft/modpacks/${id}`);
+    }
+  }
+
+  const host = new URL(project.repositoryUrl).hostname;
+  const sourceLabel: Record<string, string> = {
+    "github.com": "GitHub",
+    "gitlab.com": "GitLab",
+    "bitbucket.org": "Bitbucket",
+    "codeberg.org": "Codeberg",
+  };
+  add(sourceLabel[host] ?? "Source", project.repositoryUrl);
+
+  const license = project.licenses.project;
+  if (license?.url) add(license.name ?? license.id ?? "License", license.url);
+  for (const link of customLinks) add(link.label, link.url);
+
+  return links;
 }
 
 function encodedFilePath(sourcePath: string): string {

@@ -9,6 +9,7 @@ import { projectDocumentationBasePath, projectPageHref } from "@/lib/routes";
 import {
   repositoryCommitHref,
   repositoryFileHref,
+  projectFooterLinks,
   repositoryIssuesHref,
 } from "@/lib/repository-links";
 import type { SiteConfig } from "@/lib/config";
@@ -177,7 +178,7 @@ export function DocumentationPage({
         sourceHref={repositoryFileHref(project.repositoryUrl, version.branch, page.sourcePath, "branch")}
         commitHref={repositoryCommitHref(project.repositoryUrl, page.history.updatedRevision)}
         repositoryName={project.name}
-        repositoryFooter={project.footerLinks}
+        repositoryFooter={projectFooterLinks(project)}
         editHref={repositoryFileHref(project.repositoryUrl, version.branch, page.sourcePath, "branch")}
         reportHref={repositoryIssuesHref(project.repositoryUrl)}
       />

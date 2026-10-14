@@ -69,18 +69,29 @@ export function resolvePage(pathname: string) {
     }
   }
 
-  if (parts[1] === "project" && parts[0] && parts[2]) {
-    const localeCode = parts[0];
-    const project = documentation.projects.find((item) => item.slug === parts[2]);
+  const defaultLocaleAlias = parts[0] === "project" && parts.length === 2;
+  if (defaultLocaleAlias || (parts[1] === "project" && parts[0] && parts[2])) {
+    const localeCode = defaultLocaleAlias ? "en" : parts[0];
+    const projectSlug = defaultLocaleAlias ? parts[1] : parts[2];
+    const project = documentation.projects.find((item) => item.slug === projectSlug);
     if (!project) return { type: "not-found" as const };
-    const version = project.versions[parts[3]];
+    const isLatestAlias = defaultLocaleAlias || parts.length === 3;
+    const version = project.versions[isLatestAlias ? "latest" : parts[3]];
     const locale = version?.locales[localeCode];
     if (!version || !locale) return { type: "not-found" as const };
-    if (parts.length === 4) {
+    if (isLatestAlias || parts.length === 4) {
       const currentPath = locale.defaultPage;
       const page = locale.pages[currentPath];
       if (!page) return { type: "not-found" as const };
-      return { type: "documentation" as const, project, version, locale, page, currentPath };
+      return {
+        type: "documentation" as const,
+        project,
+        version,
+        locale,
+        page,
+        currentPath,
+        ...(isLatestAlias ? { redirectHref: projectPageHref(project, currentPath, version.id, locale.code) } : {}),
+      };
     }
     if (parts[4] !== "docs") return { type: "not-found" as const };
     const currentPath = parts.slice(5).join("/") || locale.defaultPage;
@@ -162,10 +173,16 @@ export function staticPaths(): string[] {
       ...knownCategories(type).map((category) => directoryHref(type, category)),
     ]),
     ...documentation.projects.flatMap((project) =>
-      Object.values(project.versions).flatMap((version) => Object.values(version.locales).flatMap((locale) => [
-        projectRootHref(project, locale.code, version.id),
-        ...Object.keys(locale.pages).map((pagePath) => projectPageHref(project, pagePath, version.id, locale.code)),
-      ])),
+      [
+        ...Object.values(project.versions).flatMap((version) => Object.values(version.locales).flatMap((locale) => [
+          projectRootHref(project, locale.code, version.id),
+          ...Object.keys(locale.pages).map((pagePath) => projectPageHref(project, pagePath, version.id, locale.code)),
+        ])),
+        ...Object.keys(project.versions.latest?.locales ?? {}).flatMap((locale) => [
+          `/${locale}/project/${project.slug}/`,
+          ...(locale === "en" ? [`/project/${project.slug}/`] : []),
+        ]),
+      ],
     ),
   ];
   return [...new Set(paths)];

@@ -5,7 +5,7 @@ import "@fontsource/nunito/latin-600.css";
 import "@fontsource/nunito/latin-700.css";
 import "highlight.js/styles/github-dark.css";
 import "@/app/globals.css";
-import { App, pageMetadata } from "@/src/app";
+import { App, pageMetadata, resolvePage } from "@/src/app";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("RepoDocs root element is missing.");
@@ -89,6 +89,16 @@ function ClientApplication() {
   }, []);
 
   useEffect(() => {
+    const resolved = resolvePage(location.pathname);
+    if (resolved.type === "documentation" && resolved.redirectHref) {
+      const destination = new URL(resolved.redirectHref, window.location.origin);
+      destination.search = location.search;
+      destination.hash = location.hash;
+      window.history.replaceState(null, "", destination);
+      setLocation(currentLocation());
+      return;
+    }
+
     const metadata = pageMetadata(location.pathname);
     document.title = metadata.title;
     document.querySelector('meta[name="description"]')?.setAttribute("content", metadata.description);

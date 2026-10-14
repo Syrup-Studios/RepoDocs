@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { renderToString } from "react-dom/server";
-import { App, pageMetadata, staticPaths } from "@/src/app";
+import { App, pageMetadata, resolvePage, staticPaths } from "@/src/app";
 
 const outputDirectory = path.join(process.cwd(), "dist");
 const template = await readFile(path.join(outputDirectory, "index.html"), "utf8");
@@ -16,7 +16,12 @@ function escapeAttribute(value: string): string {
 
 function render(pathname: string): string {
   const metadata = pageMetadata(pathname);
+  const resolved = resolvePage(pathname);
+  const redirect = resolved.type === "documentation" && resolved.redirectHref
+    ? `<meta http-equiv="refresh" content="0;url=${escapeAttribute(resolved.redirectHref)}"><link rel="canonical" href="${escapeAttribute(resolved.redirectHref)}">`
+    : "";
   return template
+    .replace("</head>", `${redirect}</head>`)
     .replace("<!--repodocs-title-->", escapeAttribute(metadata.title))
     .replace("<!--repodocs-description-->", escapeAttribute(metadata.description))
     .replace(

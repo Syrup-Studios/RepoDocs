@@ -270,6 +270,20 @@ The shorter project route opens the default documentation page for the selected 
 /{locale}/project/{slug}/{version}/
 ```
 
+The route without a version redirects to the default page in the `latest` version for that language:
+
+```text
+/{locale}/project/{slug}/
+```
+
+The English shortcut omits the locale and redirects to the latest English default page:
+
+```text
+/project/{slug}/
+```
+
+This shortcut returns not found when the project has no English locale in its latest version.
+
 For example, `/en/project/my-project/1.21.1/docs/configuration/` opens the English configuration page from the `docs/1.21` branch. This canonical route is the only project documentation route.
 
 ## Project routes

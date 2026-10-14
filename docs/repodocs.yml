@@ -1,6 +1,4 @@
 # yaml-language-server: $schema=../public/schemas/repodocs.schema.json
-schema: 1
-id: repodocs
 name: RepoDocs
 summary: Static documentation generated from project repositories.
 owners:

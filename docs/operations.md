@@ -47,7 +47,7 @@ Use a lower value if the build machine has limited memory or if a Git host limit
 
 Repositories without a valid root `docs/` directory are skipped. A native RepoDocs project must contain Markdown files in that directory. A ModdedMC V1 project must contain MDX pages under `docs/docs/`. A legacy ModdedMC project keeps its MDX pages directly under `docs/`. RepoDocs reports each skipped project and continues.
 
-Other problems stop the build. These problems include an invalid repository file, a duplicate slug, an unsupported metadata schema, a mismatched project ID, a Git failure, an invalid `docs/repodocs.yml`, a missing navigation target, and a Markdown page without Git history. This behavior prevents publication of incomplete or inconsistent data.
+Other problems stop the build. These problems include an invalid repository file, a duplicate slug, an unsupported metadata schema, a mismatched ModdedMC project ID, a Git failure, an invalid `docs/repodocs.yml`, a missing navigation target, and a Markdown page without Git history. This behavior prevents publication of incomplete or inconsistent data.
 
 The final website contains:
 

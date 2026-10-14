@@ -4,16 +4,14 @@
   "description": "Schema version 1 for docs/repodocs.yml.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "id"],
   "properties": {
     "schema": {
-      "description": "RepoDocs metadata and directory format version.",
+      "description": "Optional RepoDocs metadata format version. Omission uses version 1.",
       "const": 1
     },
     "id": {
-      "description": "Stable project ID. It must match the registered repository slug.",
-      "type": "string",
-      "pattern": "^[a-z][a-z0-9-]{0,62}$"
+      "description": "Deprecated legacy field. RepoDocs ignores this value; the site operator registration sets the project ID.",
+      "deprecated": true
     },
     "name": {
       "description": "Project name shown on RepoDocs. It replaces the local registration name.",

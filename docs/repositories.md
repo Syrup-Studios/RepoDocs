@@ -23,22 +23,19 @@ my-project/
 └── README.md
 ```
 
-A minimal configuration contains a schema version and a stable project ID:
+A minimal configuration needs no schema version or project ID. The site operator sets the project ID in the site registration.
 
 ```yaml
 # yaml-language-server: $schema=https://your-repodocs-site.example/schemas/repodocs.schema.json
-schema: 1
-id: my-project
+name: My project
 ```
 
-Ask the site operator which ID to use. It must match the `slug` in the site registration. Adding `docs/repodocs.yml` does not register the repository by itself. The site operator must register the repository once before RepoDocs can find it.
+Adding `docs/repodocs.yml` does not register the repository by itself. The site operator must register the repository before RepoDocs can find it.
 
 You can add public project metadata to the same file:
 
 ```yaml
 # yaml-language-server: $schema=https://your-repodocs-site.example/schemas/repodocs.schema.json
-schema: 1
-id: my-project
 name: My project
 summary: A small technology mod with configurable machines.
 modId: my_project
@@ -76,7 +73,7 @@ footer:
     url: https://github.com/example/my-project
 ```
 
-`schema` and `id` are required. `schema` must be the number `1`, not the string `"1"`. The ID must match the registered project slug. RepoDocs ignores a file that has no schema. It stops the build for an unknown schema, a mismatched ID, or an unknown field.
+`schema` is optional. If present, it must be the number `1`, not the string `"1"`. The site operator registration sets the project ID. The legacy `id` field is ignored. An unknown schema or field stops the build.
 
 The published [JSON Schema](/schemas/repodocs.schema.json) provides validation and editor completion. Replace the example domain in the YAML language-server comment with the address of your RepoDocs website.
 
@@ -86,8 +83,8 @@ A project that also publishes on ModdedMC can use `docs/sinytra-wiki.json` and t
 
 | Field | Purpose |
 | --- | --- |
-| `schema` | RepoDocs metadata format. The current value is the number `1`. |
-| `id` | Stable project ID. It must match the slug registered by the site operator. |
+| `schema` | Optional RepoDocs metadata format. If present, use the number `1`. Omission uses version 1. |
+| `id` | Deprecated legacy field. RepoDocs ignores it. The site operator registration sets the project ID. |
 | `name` | Project name shown on the website. |
 | `summary` | Plain-text project description with at most 240 characters. |
 | `type` | Project type. Set it together with `category`. |

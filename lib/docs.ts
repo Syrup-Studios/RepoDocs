@@ -180,18 +180,8 @@ export async function readProjectConfiguration(
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("docs/repodocs.yml must contain a YAML object.");
   }
-  if (parsed.schema === undefined) {
-    process.stderr.write(`Ignored ${configurationFile}: missing numeric schema: 1.\n`);
-    return compatibleDefaults;
-  }
-  if (parsed.schema !== 1) {
+  if (parsed.schema !== undefined && parsed.schema !== 1) {
     throw new Error("docs/repodocs.yml must use the numeric value schema: 1.");
-  }
-  if (typeof parsed.id !== "string" || !validProjectId.test(parsed.id)) {
-    throw new Error("id in docs/repodocs.yml must start with a lowercase letter and use only lowercase letters, numbers, or hyphens.");
-  }
-  if (parsed.id !== compatibleDefaults.id) {
-    throw new Error(`Project ID "${parsed.id}" does not match the registered ID "${compatibleDefaults.id}".`);
   }
   for (const key of Object.keys(parsed)) {
     if (!projectConfigurationKeys.has(key)) throw new Error(`Unknown field in docs/repodocs.yml: ${key}`);
@@ -253,7 +243,7 @@ export async function readProjectConfiguration(
   }
   return {
     documentationFormat: compatibleDefaults.documentationFormat,
-    id: parsed.id,
+    id: compatibleDefaults.id,
     name: name.trim(),
     summary,
     documentationType,

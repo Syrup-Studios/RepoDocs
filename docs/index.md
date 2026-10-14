@@ -65,7 +65,7 @@ const config = {
 
 These values appear in page titles, headers, metadata, and links on the generated site.
 
-The Markdown files in `docs/` are the source for this guide. The `docs/repodocs.yml` file declares schema version 1 and the stable project ID. The documentation sync renders the pages and creates the guide navigation.
+The Markdown files in `docs/` are the source for this guide. The `docs/repodocs.yml` file can declare schema version 1 and project metadata. The site operator registration sets the project ID. The documentation sync renders the pages and creates the guide navigation.
 
 ## Continue setup
 

@@ -301,6 +301,9 @@ button, input, select { font: inherit; }
 .dashboard-status.published { color: #74c99b; }
 .dashboard-repo-link { width: 28px; height: 28px; display: grid; place-items: center; color: #9299a5; border-radius: 3px; }
 .dashboard-repo-link:hover { color: white; background: rgb(255 255 255 / 6%); }
+.dashboard-repository-actions { display: flex; align-items: center; gap: 10px; }
+.dashboard-add-repository-link { color: #9ab8e1; font-size: 10px; white-space: nowrap; }
+.dashboard-add-repository-link:hover { color: white; text-decoration: underline; }
 .dashboard-user { display: inline-flex; align-items: center; gap: 8px; margin: -8px 0 18px; color: #9299a5; font-size: 11px; }
 .dashboard-user img { width: 22px; height: 22px; border: 1px solid var(--line); border-radius: 50%; }
 .dashboard-user strong { color: #dfe2e7; }
@@ -399,6 +402,7 @@ button, input, select { font: inherit; }
   .dashboard-title-row { align-items: start; flex-direction: column; }
   .dashboard-panel { padding: 18px 14px 12px; }
   .dashboard-repository { grid-template-columns: 36px minmax(0, 1fr); }
+  .dashboard-repository-actions { grid-column: 2; justify-content: flex-start; }
   .dashboard-registration-actions, .dashboard-row-feedback { grid-column: 2; justify-content: flex-start; }
   .registration-steps li { margin-right: 17px; }
   .registration-form-grid { grid-template-columns: 1fr; }

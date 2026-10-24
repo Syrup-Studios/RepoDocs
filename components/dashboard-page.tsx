@@ -39,6 +39,10 @@ const statusLabels: Record<string, string> = {
   removal_pending: "Removal pending",
 };
 
+function normalizeRepositoryUrl(url: string | undefined): string {
+  return (url ?? "").trim().replace(/\/+$/, "").toLowerCase();
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, { credentials: "include" });
   if (!response.ok) throw Object.assign(new Error(`Request failed: ${response.status}`), { status: response.status });
@@ -138,13 +142,17 @@ export function DashboardPage({ siteName }: { siteName: string }) {
             </section>
             <section className="dashboard-panel">
               <div className="dashboard-section-heading"><div><h2>Connected GitHub repositories</h2><p>Repositories that your GitHub account can access.</p></div><span>{githubUnavailable ? "Unavailable" : githubRepositories.length}</span></div>
-              {githubUnavailable ? <p className="dashboard-empty">Connected repositories are unavailable.</p> : githubRepositories.length ? <div className="dashboard-list">{githubRepositories.map((repo) => (
-                <article className="dashboard-repository" key={repo.id}>
-                  <div className="dashboard-repository-icon"><Github size={19} /></div>
-                  <div className="dashboard-repository-details"><h3>{repo.fullName}</h3>{repo.description && <p>{repo.description}</p>}<div className="dashboard-meta">{repo.private !== undefined && <span>{repo.private ? "Private" : "Public"}</span>}{repo.archived && <span>Archived</span>}{repo.admin && <span>Admin access</span>}</div></div>
-                  <a className="dashboard-repo-link" href={repo.url} target="_blank" rel="noreferrer" aria-label={`Open ${repo.fullName} on GitHub`}><ExternalLink size={16} /></a>
-                </article>
-              ))}</div> : <p className="dashboard-empty">No connected repositories were found.</p>}
+              {githubUnavailable ? <p className="dashboard-empty">Connected repositories are unavailable.</p> : githubRepositories.length ? <div className="dashboard-list">{githubRepositories.map((repo) => {
+                const registered = registrations.some((item) => normalizeRepositoryUrl(item.repositoryUrl) === normalizeRepositoryUrl(repo.url));
+                const eligible = repo.admin && repo.private === false && !repo.archived && !registered && !registrationsUnavailable;
+                return (
+                  <article className="dashboard-repository" key={repo.id}>
+                    <div className="dashboard-repository-icon"><Github size={19} /></div>
+                    <div className="dashboard-repository-details"><h3>{repo.fullName}</h3>{repo.description && <p>{repo.description}</p>}<div className="dashboard-meta">{repo.private !== undefined && <span>{repo.private ? "Private" : "Public"}</span>}{repo.archived && <span>Archived</span>}{repo.admin && <span>Admin access</span>}</div></div>
+                    <div className="dashboard-repository-actions"><a className="dashboard-repo-link" href={repo.url} target="_blank" rel="noreferrer" aria-label={`Open ${repo.fullName} on GitHub`}><ExternalLink size={16} /></a>{eligible && <a className="dashboard-add-repository-link" href={`/dashboard/add/?url=${encodeURIComponent(repo.url)}`}>Add to RepoDocs</a>}</div>
+                  </article>
+                );
+              })}</div> : <p className="dashboard-empty">No connected repositories were found.</p>}
             <a className="dashboard-add-link" href="/dashboard/add/"><Plus size={16} /> Add Repository</a>
             </section>
           </>

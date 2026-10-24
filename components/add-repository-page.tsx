@@ -97,6 +97,11 @@ export function AddRepositoryPage({ siteName }: { siteName: string }) {
   const [result, setResult] = useState<RegistrationResult["registration"] | null>(null);
 
   useEffect(() => {
+    const requestedUrl = new URLSearchParams(window.location.search).get("url");
+    if (requestedUrl) setUrl(requestedUrl);
+  }, []);
+
+  useEffect(() => {
     let active = true;
     if (!apiBase) {
       setSessionReady(true);
@@ -129,6 +134,15 @@ export function AddRepositoryPage({ siteName }: { siteName: string }) {
             return;
           }
           setRepositories(list as GitHubRepository[]);
+          const requestedUrl = new URLSearchParams(window.location.search).get("url")?.trim();
+          if (requestedUrl) {
+            const normalizedUrl = requestedUrl.replace(/\/+$/, "").toLowerCase();
+            const match = (list as GitHubRepository[]).find((repo) => repo.admin && !repo.private && !repo.archived && repo.url.trim().replace(/\/+$/, "").toLowerCase() === normalizedUrl);
+            if (match) {
+              setSelectedRepository(match.url);
+              setUrl(match.url);
+            }
+          }
         } catch {
           setRepositoryError("Connected repositories are unavailable. You can enter a GitHub URL below.");
           return;

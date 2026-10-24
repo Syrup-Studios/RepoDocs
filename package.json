@@ -6,8 +6,11 @@
   "packageManager": "bun@1.3.14",
   "scripts": {
     "docs:sync": "bun scripts/sync-docs.ts",
+    "docs:sync:incremental": "bun scripts/sync-docs.ts --incremental",
     "dev": "bun run docs:sync && vite",
     "build": "bun run docs:sync && vite build && bun scripts/prerender.tsx",
+    "build:incremental": "bun run docs:sync:incremental && vite build && bun scripts/prerender.tsx",
+    "build:clean": "bun scripts/sync-docs.ts --clean && vite build && bun scripts/prerender.tsx --clean",
     "preview": "vite preview",
     "lint": "eslint ."
   },

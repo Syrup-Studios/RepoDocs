@@ -97,3 +97,17 @@ export type GeneratedDocumentation = {
   siteDocumentation: CachedProject;
   projects: CachedProject[];
 };
+
+export type ProjectIndexEntry = Omit<CachedProject, "versions"> & {
+  versions: Record<string, Omit<CachedDocumentationVersion, "locales"> & {
+    locales: Record<string, Omit<CachedDocumentationLocale, "pages"> & {
+      pages: Record<string, Pick<CachedPage, "path" | "title" | "description">>;
+    }>;
+  }>;
+};
+
+export type GeneratedDocumentationIndex = {
+  generatedAt: string;
+  siteDocumentation: CachedProject;
+  projects: ProjectIndexEntry[];
+};

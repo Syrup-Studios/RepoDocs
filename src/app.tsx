@@ -1,7 +1,6 @@
 import HomePage, { type DirectorySelection } from "@/app/page";
 import { DocumentationPage } from "@/components/documentation-page";
 import { NotFound } from "@/components/not-found";
-import generatedData from "@/generated/docs.json";
 import config from "@/repodocs.config";
 import {
   categoryLabel,
@@ -17,35 +16,35 @@ import {
   classifiedCategoryFromSegment,
 } from "@/lib/routes";
 import { defaultDocumentationContext } from "@/lib/documentation-context";
-import type { GeneratedDocumentation } from "@/lib/types";
+import type { CachedProject, GeneratedDocumentationIndex } from "@/lib/types";
+import { DashboardPage } from "@/components/dashboard-page";
+import { AddRepositoryPage } from "@/components/add-repository-page";
+import { ManageRepositoryPage } from "@/components/manage-repository-page";
 
-const documentation = generatedData as unknown as GeneratedDocumentation;
-const siteDocumentation = defaultDocumentationContext(documentation.siteDocumentation);
-
-function knownTypes(): string[] {
+function knownTypes(documentation: GeneratedDocumentationIndex): string[] {
   return [...new Set([
     ...firstClassDirectories().map((directory) => directory.type),
     ...documentation.projects.flatMap((project) => project.documentationType ? [project.documentationType] : []),
   ])];
 }
 
-function knownCategories(type: string): string[] {
+function knownCategories(type: string, documentation: GeneratedDocumentationIndex): string[] {
   const configured = documentation.projects.flatMap((project) => project.documentationType === type && project.category ? [project.category] : []);
   return directoryCategoryNames(type, configured);
 }
 
-function directorySelection(parts: string[]): DirectorySelection | null {
+function directorySelection(parts: string[], documentation: GeneratedDocumentationIndex): DirectorySelection | null {
   if (parts.length === 0) return { type: null, category: null };
   if (parts.length === 1 && parts[0] === "docs") return { type: null, category: null, infoPage: "docs" };
   if (parts.length === 1 && parts[0] === "projects") return { type: null, category: null, general: true };
   if (parts.length === 1 && (parts[0] === "mods" || parts[0] === "modpacks")) {
     return { type: "minecraft", category: classifiedCategoryFromSegment("minecraft", parts[0]) };
   }
-  if (!knownTypes().includes(parts[0]) || parts.length > 2) return null;
+  if (!knownTypes(documentation).includes(parts[0]) || parts.length > 2) return null;
   const definition = directoryDefinition(parts[0]);
   if (parts.length === 1) return { type: parts[0], category: definition?.defaultCategory ?? null };
   const category = classifiedCategoryFromSegment(parts[0], parts[1]);
-  if (!knownCategories(parts[0]).includes(category)) return null;
+  if (!knownCategories(parts[0], documentation).includes(category)) return null;
   return { type: parts[0], category };
 }
 
@@ -57,8 +56,12 @@ function pathParts(pathname: string): string[] {
   }
 }
 
-export function resolvePage(pathname: string) {
+export function resolvePage(pathname: string, documentation: GeneratedDocumentationIndex, projectData?: CachedProject) {
+  const siteDocumentation = defaultDocumentationContext(documentation.siteDocumentation);
   const parts = pathParts(pathname);
+  if (parts[0] === "dashboard" && (parts.length === 1 || (parts.length === 2 && ["add", "manage"].includes(parts[1])))) {
+    return { type: "dashboard" as const, addRepository: parts[1] === "add", manageRepository: parts[1] === "manage" };
+  }
   if (parts[0] === "docs") {
     const documentationPath = parts.slice(1).join("/");
     if (siteDocumentation.locale.pages[documentationPath]) {
@@ -73,8 +76,10 @@ export function resolvePage(pathname: string) {
   if (defaultLocaleAlias || (parts[1] === "project" && parts[0] && parts[2])) {
     const localeCode = defaultLocaleAlias ? "en" : parts[0];
     const projectSlug = defaultLocaleAlias ? parts[1] : parts[2];
-    const project = documentation.projects.find((item) => item.slug === projectSlug);
-    if (!project) return { type: "not-found" as const };
+    const projectSummary = documentation.projects.find((item) => item.slug === projectSlug);
+    if (!projectSummary) return { type: "not-found" as const };
+    const project = projectData?.slug === projectSlug ? projectData : null;
+    if (!project) return { type: "project-loading" as const, slug: projectSlug };
     const isLatestAlias = defaultLocaleAlias || parts.length === 3;
     const version = project.versions[isLatestAlias ? "latest" : parts[3]];
     const locale = version?.locales[localeCode];
@@ -100,14 +105,16 @@ export function resolvePage(pathname: string) {
     return { type: "documentation" as const, project, version, locale, page, currentPath };
   }
 
-  const selection = directorySelection(parts);
+  const selection = directorySelection(parts, documentation);
   if (selection) return { type: "home" as const, selection };
 
   return { type: "not-found" as const };
 }
 
-export function pageMetadata(pathname: string): { title: string; description: string; favicon: string | null } {
-  const resolved = resolvePage(pathname);
+export function pageMetadata(pathname: string, documentation: GeneratedDocumentationIndex, projectData?: CachedProject): { title: string; description: string; favicon: string | null } {
+  const resolved = resolvePage(pathname, documentation, projectData);
+  if (resolved.type === "project-loading") return { title: config.site.name, description: config.site.description, favicon: null };
+  if (resolved.type === "dashboard") return { title: `${resolved.addRepository ? "Add Repository" : "My Repositories"} · ${config.site.name}`, description: "Manage your repositories.", favicon: null };
   if (resolved.type === "home") {
     if (resolved.selection.infoPage === "docs") {
       const { locale } = defaultDocumentationContext(documentation.siteDocumentation);
@@ -148,8 +155,14 @@ export function pageMetadata(pathname: string): { title: string; description: st
   };
 }
 
-export function App({ pathname }: { pathname: string }) {
-  const resolved = resolvePage(pathname);
+export function App({ pathname, search = "", documentation, projectData }: { pathname: string; search?: string; documentation: GeneratedDocumentationIndex; projectData?: CachedProject }) {
+  const resolved = resolvePage(pathname, documentation, projectData);
+  if (resolved.type === "project-loading") return null;
+  if (resolved.type === "dashboard") return resolved.manageRepository
+    ? <ManageRepositoryPage siteName={config.site.name} search={search} />
+    : resolved.addRepository
+      ? <AddRepositoryPage siteName={config.site.name} />
+      : <DashboardPage siteName={config.site.name} />;
   if (resolved.type === "home") return <HomePage documentation={documentation} selection={resolved.selection} site={config.site} />;
   if (resolved.type === "documentation") {
     return <DocumentationPage projects={documentation.projects} project={resolved.project} version={resolved.version} locale={resolved.locale} page={resolved.page} currentPath={resolved.currentPath} site={config.site} />;
@@ -157,25 +170,29 @@ export function App({ pathname }: { pathname: string }) {
   return <NotFound siteName={config.site.name} />;
 }
 
-export function staticPaths(): string[] {
-  const siteDocumentationPaths = Object.keys(siteDocumentation.locale.pages).map((pagePath) =>
+export function staticPaths(documentation: GeneratedDocumentationIndex): string[] {
+  const siteDocumentationPaths = Object.keys(defaultDocumentationContext(documentation.siteDocumentation).locale.pages).map((pagePath) =>
     `/docs${pagePath ? `/${pagePath}` : ""}/`,
   );
   const paths = [
     "/",
+    "/dashboard/",
+    "/dashboard/add/",
+    "/dashboard/manage/",
     ...siteDocumentationPaths,
     "/projects/",
     "/mods/",
     "/modpacks/",
     ...firstClassDirectories().filter((directory) => directory.type !== "minecraft").map((directory) => directory.href),
-    ...knownTypes().filter((type) => !directoryDefinition(type)).flatMap((type) => [
+    ...knownTypes(documentation).filter((type) => !directoryDefinition(type)).flatMap((type) => [
       `/${type}/`,
-      ...knownCategories(type).map((category) => directoryHref(type, category)),
+      ...knownCategories(type, documentation).map((category) => directoryHref(type, category)),
     ]),
     ...documentation.projects.flatMap((project) =>
       [
         ...Object.values(project.versions).flatMap((version) => Object.values(version.locales).flatMap((locale) => [
           projectRootHref(project, locale.code, version.id),
+          projectPageHref(project, "", version.id, locale.code),
           ...Object.keys(locale.pages).map((pagePath) => projectPageHref(project, pagePath, version.id, locale.code)),
         ])),
         ...Object.keys(project.versions.latest?.locales ?? {}).flatMap((locale) => [

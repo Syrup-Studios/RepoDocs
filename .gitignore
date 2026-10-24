@@ -7,6 +7,9 @@ public/repository-favicons/
 generated/docs.json
 .env*
 !.env.example
+.dev.vars*
+!.dev.vars.example
+*.private-key.pem
 npm-debug.log*
 yarn-error.log*
 *.log

@@ -1,9 +1,10 @@
 import { BookOpen, Github } from "lucide-react";
 import { DocumentationSearch } from "@/components/documentation-search";
+import { AccountMenu } from "@/components/account-menu";
 import { GroupedProjectList } from "@/components/grouped-project-list";
 import { SiteFooter } from "@/components/site-footer";
 import type { SiteConfig } from "@/lib/config";
-import type { CachedProject } from "@/lib/types";
+import type { ProjectIndexEntry } from "@/lib/types";
 
 type GameCategory = {
   name: string;
@@ -20,8 +21,8 @@ export function GameDirectoryPage({
   site,
 }: {
   game: string;
-  projects: CachedProject[];
-  searchProjects: CachedProject[];
+  projects: ProjectIndexEntry[];
+  searchProjects: ProjectIndexEntry[];
   categories: GameCategory[];
   selectedCategory: string | null;
   site: SiteConfig;
@@ -42,6 +43,7 @@ export function GameDirectoryPage({
         <div className="docs-actions">
           <DocumentationSearch projects={searchProjects} />
           <a className="header-repository" href={site.repository} target="_blank" rel="noreferrer"><Github size={20} /><span>{repositoryName}</span></a>
+          <AccountMenu />
         </div>
       </header>
 

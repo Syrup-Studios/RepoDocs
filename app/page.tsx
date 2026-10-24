@@ -11,6 +11,7 @@ import { DocumentationContent } from "@/components/documentation-content";
 import { DocumentationSearch } from "@/components/documentation-search";
 import { DocsNav } from "@/components/docs-nav";
 import { SiteFooter } from "@/components/site-footer";
+import { AccountMenu } from "@/components/account-menu";
 import {
   categoryLabel,
   directoryCategoryNames,
@@ -23,7 +24,7 @@ import { projectPageHref } from "@/lib/routes";
 import { defaultDocumentationContext } from "@/lib/documentation-context";
 import { repositoryCommitHref, repositoryFileHref } from "@/lib/repository-links";
 import type { SiteConfig } from "@/lib/config";
-import type { CachedProject, GeneratedDocumentation } from "@/lib/types";
+import type { GeneratedDocumentationIndex, ProjectIndexEntry } from "@/lib/types";
 
 export type DirectorySelection = {
   type: string | null;
@@ -39,8 +40,9 @@ function label(value: string): string {
   return directoryLabel(value);
 }
 
-function projectCard(project: CachedProject) {
-  const { version, locale } = defaultDocumentationContext(project);
+function projectCard(project: ProjectIndexEntry) {
+  const version = project.versions[project.defaultVersion];
+  const locale = version.locales[project.defaultLocale];
   return (
     <article className="portal-project" key={project.slug}>
       <div className="project-icon">
@@ -71,7 +73,7 @@ function projectCard(project: CachedProject) {
   );
 }
 
-export default function HomePage({ documentation, selection, site }: { documentation: GeneratedDocumentation; selection: DirectorySelection; site: SiteConfig }) {
+export default function HomePage({ documentation, selection, site }: { documentation: GeneratedDocumentationIndex; selection: DirectorySelection; site: SiteConfig }) {
   const { projects, generatedAt, siteDocumentation: docsProject } = documentation;
   const { version: docsVersion, locale: docsLocale } = defaultDocumentationContext(docsProject);
   const documentationPath = selection.documentationPath ?? docsLocale.defaultPage;
@@ -126,6 +128,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
           <div className="docs-actions">
             <DocumentationSearch projects={projects} />
             <a className="header-repository" href={site.repository} target="_blank" rel="noreferrer"><Github size={20} /><span>{new URL(site.repository).pathname.replace(/^\//, "")}</span></a>
+            <AccountMenu />
           </div>
         </header>
 
@@ -203,6 +206,7 @@ export default function HomePage({ documentation, selection, site }: { documenta
         <nav aria-label="Main navigation"><a className="active" href="/#projects">Projects</a><a href="/#how-it-works">How it works</a></nav>
         <DocumentationSearch projects={projects} />
         <a className="header-repository" href={site.repository} target="_blank" rel="noreferrer"><Github size={19} /><span>Source</span></a>
+        <AccountMenu />
       </header>
 
       <main className="portal-main">

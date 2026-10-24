@@ -2,6 +2,7 @@ import { BookOpen, Github } from "lucide-react";
 import { DocumentationContent } from "@/components/documentation-content";
 import { DocsNav } from "@/components/docs-nav";
 import { DocumentationSearch } from "@/components/documentation-search";
+import { AccountMenu } from "@/components/account-menu";
 import { GroupedProjectList } from "@/components/grouped-project-list";
 import { SiteFooter } from "@/components/site-footer";
 import { directoryCategory, directoryDefinition } from "@/lib/classification";
@@ -18,6 +19,7 @@ import type {
   CachedDocumentationVersion,
   CachedPage,
   CachedProject,
+  ProjectIndexEntry,
   NavItem,
 } from "@/lib/types";
 
@@ -57,7 +59,7 @@ export function DocumentationPage({
   site,
   version,
 }: {
-  projects: CachedProject[];
+  projects: ProjectIndexEntry[];
   project: CachedProject;
   page: CachedPage;
   currentPath: string;
@@ -85,6 +87,7 @@ export function DocumentationPage({
         <div className="docs-actions">
           <DocumentationSearch projects={projects} />
           <a className="header-repository" href={project.repositoryUrl} target="_blank" rel="noreferrer" title="Open repository"><Github size={20} /><span>{repositoryName}</span></a>
+          <AccountMenu />
         </div>
       </header>
 

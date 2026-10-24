@@ -1,0 +1,118 @@
+name: Validate repository registrations
+
+on:
+  pull_request:
+    paths:
+      - "repositories/*.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out trusted base revision
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch pull request revision
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: git fetch --no-tags origin "+refs/pull/${PR_NUMBER}/head:refs/remotes/pull/${PR_NUMBER}/head"
+
+      - name: Copy changed registration files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from "node:child_process";
+          import { mkdir, rm, writeFile } from "node:fs/promises";
+          import path from "node:path";
+
+          const base = process.env.BASE_SHA;
+          const head = process.env.PR_SHA;
+          const changedPaths = execFileSync("git", ["diff", "--name-only", "-z", `${base}...${head}`], { encoding: "utf8" })
+            .split("\0")
+            .filter(Boolean);
+          const registrationPath = /^repositories\/(?!\.)[A-Za-z0-9_.-]+\.yml$/;
+          if (changedPaths.some((name) => !registrationPath.test(name))) {
+            throw new Error("Registration validation pull requests may change only repositories/*.yml files.");
+          }
+          const paths = changedPaths;
+
+          if (paths.length > 100) throw new Error("A pull request may change at most 100 repository registrations.");
+          for (const name of paths) {
+            const target = path.resolve(name);
+            if (!target.startsWith(`${process.cwd()}${path.sep}`)) throw new Error(`Invalid registration path: ${name}`);
+
+            let exists = true;
+            try {
+              execFileSync("git", ["cat-file", "-e", `${head}:${name}`]);
+            } catch {
+              exists = false;
+            }
+            if (!exists) {
+              await rm(target, { force: true });
+              continue;
+            }
+
+            const content = execFileSync("git", ["show", `${head}:${name}`], { encoding: "buffer", maxBuffer: 262145 });
+            if (content.length > 262144) throw new Error(`${name} exceeds the 256 KiB limit.`);
+            await mkdir(path.dirname(target), { recursive: true });
+            await rm(target, { force: true });
+            await writeFile(target, content, { flag: "w" });
+          }
+          NODE
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate registrations and build
+        run: bun run build:clean
+
+      - name: Check registrations were built
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdir, readFile } from "node:fs/promises";
+          import { execFileSync } from "node:child_process";
+          import { parse } from "yaml";
+
+          const registrations = [];
+          const slugs = new Set();
+          const repositories = new Set();
+          const changedFiles = new Set(execFileSync("git", ["diff", "--name-only", "-z", `${process.env.BASE_SHA}...${process.env.PR_SHA}`], { encoding: "utf8" })
+            .split("\0")
+            .filter((name) => /^repositories\/(?!\.)[A-Za-z0-9_.-]+\.yml$/.test(name)));
+          for (const entry of await readdir("repositories", { withFileTypes: true })) {
+            if (!entry.isFile() || entry.name.startsWith(".") || !entry.name.endsWith(".yml")) continue;
+            const file = `repositories/${entry.name}`;
+            const config = parse(await readFile(file, "utf8"));
+            if (slugs.has(config.slug)) throw new Error(`Duplicate registration slug: ${config.slug}`);
+            slugs.add(config.slug);
+
+            const url = new URL(config.repository);
+            const identity = `${url.hostname.toLowerCase()}${url.pathname.replace(/\/+$/, "").replace(/\.git$/i, "").toLowerCase()}`;
+            if (repositories.has(identity)) throw new Error(`Duplicate repository registration: ${config.repository}`);
+            repositories.add(identity);
+            registrations.push({ file, slug: config.slug });
+          }
+
+          const generated = JSON.parse(await readFile("generated/docs.json", "utf8"));
+          const builtSlugs = new Set(generated.projects.map((project) => project.slug));
+          const missing = registrations.filter(({ file, slug }) => changedFiles.has(file) && !builtSlugs.has(slug));
+          if (missing.length) throw new Error(`Changed registrations missing compiled documentation: ${missing.map(({ file }) => file).join(", ")}`);
+          NODE

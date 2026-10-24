@@ -36,8 +36,70 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Restore compiled project and prerender caches
+        if: github.ref == 'refs/heads/main' && github.repository == 'Syrup-Studios/RepoDocs'
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .repodocs-cache/compiled
+            .repodocs-cache/prerender
+          key: repodocs-build-cache-v1-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            repodocs-build-cache-v1-${{ runner.os }}-
+
       - name: Build site
-        run: bun run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.REPODOCS_API_ORIGIN }}
+        run: bun run build:incremental
+
+      - name: Validate complete site output
+        run: |
+          bun - <<'BUN'
+          import { readFile, stat } from "node:fs/promises";
+          import path from "node:path";
+          import generated from "./generated/docs.json" with { type: "json" };
+          import { documentationIndex } from "./lib/project-index.ts";
+          import { staticPaths } from "./src/app.tsx";
+
+          const index = documentationIndex(generated);
+          const publication = JSON.parse(await readFile("dist/publication.json", "utf8"));
+          if (typeof publication.siteSourceRevision !== "string" || !publication.siteSourceRevision) throw new Error("Publication manifest has no site source revision.");
+          if (publication.siteSourceRevision !== generated.siteDocumentation.versions.latest.sourceRevision) throw new Error("Publication manifest site revision does not match generated documentation.");
+          if (!Array.isArray(publication.projects) || publication.projects.length !== generated.projects.length) throw new Error("Publication manifest project count does not match generated documentation.");
+          const publishedBySlug = new Map(publication.projects.map((project) => [project.slug, project]));
+          if (publishedBySlug.size !== publication.projects.length) throw new Error("Publication manifest contains duplicate project slugs.");
+          for (const project of generated.projects) {
+            const published = publishedBySlug.get(project.slug);
+            if (!published || published.repositoryUrl !== project.repositoryUrl || published.sourceRevision !== project.versions.latest.sourceRevision || typeof published.documentationUrl !== "string" || !published.documentationUrl) {
+              throw new Error(`Publication manifest is missing current project data: ${project.slug}`);
+            }
+            const dataPath = `dist/_data/projects/${project.slug}.json`;
+            const data = JSON.parse(await readFile(dataPath, "utf8"));
+            if (data.slug !== project.slug) throw new Error(`Project data has an invalid slug: ${project.slug}`);
+          }
+          const siteIndex = JSON.parse(await readFile("dist/_data/index.json", "utf8"));
+          if (siteIndex.projects?.length !== generated.projects.length) throw new Error("Static project index is incomplete.");
+          const expectedRoutes = staticPaths(index);
+          for (const route of expectedRoutes) {
+            const relative = route === "/" ? "index.html" : `${route.replace(/^\/+|\/+$/g, "")}/index.html`;
+            const routeFile = path.resolve("dist", relative);
+            if (!routeFile.startsWith(`${path.resolve("dist")}${path.sep}`) && routeFile !== path.resolve("dist/index.html")) throw new Error(`Invalid static route: ${route}`);
+            const routeStats = await stat(routeFile);
+            if (!routeStats.isFile() || routeStats.size === 0) throw new Error(`Static route output is missing: ${route}`);
+            if (!(await readFile(routeFile, "utf8")).includes('id="root"')) throw new Error(`Static route has no rendered app shell: ${route}`);
+          }
+          if ((await stat("dist/404.html")).size === 0) throw new Error("Static 404 output is empty.");
+          console.log(`Validated ${expectedRoutes.length} static routes and ${publication.projects.length} publication entries.`);
+          BUN
+
+      - name: Save compiled project and prerender caches
+        if: success() && github.ref == 'refs/heads/main' && github.repository == 'Syrup-Studios/RepoDocs'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .repodocs-cache/compiled
+            .repodocs-cache/prerender
+          key: repodocs-build-cache-v1-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v4

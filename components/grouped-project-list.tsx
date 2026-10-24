@@ -1,10 +1,10 @@
 import { ProjectTree } from "@/components/project-tree";
-import { defaultDocumentationContext } from "@/lib/documentation-context";
 import { projectDocumentationBasePath, projectPageHref } from "@/lib/routes";
 import type {
   CachedDocumentationLocale,
   CachedDocumentationVersion,
   CachedProject,
+  ProjectIndexEntry,
   NavItem,
 } from "@/lib/types";
 
@@ -12,10 +12,10 @@ type GroupedProject = {
   key: string;
   owner: string;
   host: string;
-  projects: CachedProject[];
+  projects: ProjectIndexEntry[];
 };
 
-function projectNavigation(project: CachedProject, locale: CachedDocumentationLocale): NavItem[] {
+function projectNavigation(project: ProjectIndexEntry, locale: Pick<CachedDocumentationLocale, "navigation" | "defaultPage">): NavItem[] {
   const root = locale.navigation.length === 1 ? locale.navigation[0] : null;
   const items = root?.type === "section" && root.title.toLowerCase() === project.name.toLowerCase()
     ? root.children
@@ -33,7 +33,7 @@ function repositoryOwner(project: CachedProject): string {
   return parts[0] ?? "Unknown owner";
 }
 
-function groupProjects(projects: CachedProject[]): GroupedProject[] {
+function groupProjects(projects: ProjectIndexEntry[]): GroupedProject[] {
   const groups = new Map<string, GroupedProject>();
 
   for (const project of projects) {
@@ -81,7 +81,7 @@ export function GroupedProjectList({
   currentLocale,
   currentPath,
 }: {
-  projects: CachedProject[];
+  projects: ProjectIndexEntry[];
   ariaLabel: string;
   currentProject?: CachedProject;
   currentVersion?: CachedDocumentationVersion;
@@ -99,9 +99,10 @@ export function GroupedProjectList({
           <div className="repository-owner-projects">
             {group.projects.map((listedProject) => {
               const isCurrent = listedProject.slug === currentProject?.slug;
+              const indexedVersion = listedProject.versions[listedProject.defaultVersion];
               const context = isCurrent && currentVersion && currentLocale
                 ? { version: currentVersion, locale: currentLocale }
-                : defaultDocumentationContext(listedProject);
+                : { version: indexedVersion, locale: indexedVersion.locales[listedProject.defaultLocale] };
               const navigation = projectNavigation(listedProject, context.locale);
               const href = projectPageHref(listedProject, context.locale.defaultPage, context.version.id, context.locale.code);
 

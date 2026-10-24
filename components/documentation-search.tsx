@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { projectPageHref } from "@/lib/routes";
-import type { CachedPage, CachedProject } from "@/lib/types";
+import type { CachedPage, CachedProject, ProjectIndexEntry } from "@/lib/types";
 
 type SearchEntry = {
   project: CachedProject;
@@ -106,11 +106,21 @@ function buildIndex(projects: CachedProject[]): SearchEntry[] {
   ));
 }
 
-export function DocumentationSearch({ projects }: { projects: CachedProject[] }) {
+export function DocumentationSearch({ projects }: { projects: ProjectIndexEntry[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [searchProjects, setSearchProjects] = useState<CachedProject[] | null>(null);
+  const [searchLoadFailed, setSearchLoadFailed] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  const index = useMemo(() => buildIndex(projects), [projects]);
+  useEffect(() => {
+    if (!isOpen || searchProjects || searchLoadFailed) return;
+    void Promise.all(projects.map(async (project) => {
+      const response = await fetch(`/_data/projects/${encodeURIComponent(project.slug)}.json`);
+      if (!response.ok) throw new Error(`Could not load project documentation: ${project.slug}`);
+      return response.json() as Promise<CachedProject>;
+    })).then(setSearchProjects).catch(() => setSearchLoadFailed(true));
+  }, [isOpen, projects, searchProjects, searchLoadFailed]);
+  const index = useMemo(() => buildIndex(searchProjects ?? []), [searchProjects]);
   const normalizedQuery = normalize(query);
   const terms = useMemo(() => normalizedQuery.split(" ").filter(Boolean), [normalizedQuery]);
   const results = useMemo(() => {
@@ -184,8 +194,11 @@ export function DocumentationSearch({ projects }: { projects: CachedProject[] })
             </div>
 
             <div className="search-results" aria-live="polite">
-              {!normalizedQuery && <p className="search-state">Search across {index.length} documentation pages.</p>}
-              {normalizedQuery && results.length === 0 && <p className="search-state">No documentation matches “{query.trim()}”.</p>}
+              {!normalizedQuery && !searchProjects && !searchLoadFailed && <p className="search-state">Loading documentation search…</p>}
+              {!normalizedQuery && searchProjects && <p className="search-state">Search across {index.length} documentation pages.</p>}
+              {searchLoadFailed && <p className="search-state">Search could not load documentation.</p>}
+              {normalizedQuery && searchProjects && results.length === 0 && <p className="search-state">No documentation matches “{query.trim()}”.</p>}
+              {normalizedQuery && !searchProjects && !searchLoadFailed && <p className="search-state">Loading documentation search…</p>}
               {results.length > 0 && (
                 <>
                   <p className="search-result-count">{results.length} result{results.length === 1 ? "" : "s"}</p>

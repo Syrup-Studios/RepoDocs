@@ -6,9 +6,12 @@ import "@fontsource/nunito/latin-700.css";
 import "highlight.js/styles/github-dark.css";
 import "@/app/globals.css";
 import { App, pageMetadata, resolvePage } from "@/src/app";
+import { fetchProjectData, projectSlugFromPathname } from "@/lib/project-index";
+import type { CachedProject, GeneratedDocumentationIndex } from "@/lib/types";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("RepoDocs root element is missing.");
+const applicationRoot: HTMLElement = root;
 
 type ClientLocation = {
   pathname: string;
@@ -54,12 +57,25 @@ function updateFavicon(href: string | null): void {
   if (!existing) document.head.append(favicon);
 }
 
-function ClientApplication() {
+function ClientApplication({ documentation, initialProjects }: { documentation: GeneratedDocumentationIndex; initialProjects: Record<string, CachedProject> }) {
   const [location, setLocation] = useState(currentLocation);
+  const [loadedProjects, setLoadedProjects] = useState(initialProjects);
+  const loadedProjectsRef = useRef(initialProjects);
   const initialRender = useRef(true);
 
+  const ensureProject = async (pathname: string): Promise<void> => {
+    const slug = projectSlugFromPathname(pathname);
+    if (!slug || loadedProjectsRef.current[slug]) return;
+    const project = await fetchProjectData(slug);
+    loadedProjectsRef.current = { ...loadedProjectsRef.current, [slug]: project };
+    setLoadedProjects(loadedProjectsRef.current);
+  };
+
   useEffect(() => {
-    const handleNavigation = () => setLocation(currentLocation());
+    const handleNavigation = () => {
+      const next = currentLocation();
+      void ensureProject(next.pathname).then(() => setLocation(next)).catch(() => window.location.reload());
+    };
     const handleClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       if (!(event.target instanceof Element)) return;
@@ -73,8 +89,10 @@ function ClientApplication() {
       if (destination.pathname === window.location.pathname && destination.search === window.location.search) return;
 
       event.preventDefault();
-      window.history.pushState(null, "", destination);
-      setLocation(currentLocation());
+      void ensureProject(destination.pathname).then(() => {
+        window.history.pushState(null, "", destination);
+        setLocation(currentLocation());
+      }).catch(() => window.location.assign(destination.href));
     };
 
     const previousScrollRestoration = window.history.scrollRestoration;
@@ -89,7 +107,9 @@ function ClientApplication() {
   }, []);
 
   useEffect(() => {
-    const resolved = resolvePage(location.pathname);
+    const projectSlug = projectSlugFromPathname(location.pathname);
+    const projectData = projectSlug ? loadedProjects[projectSlug] : undefined;
+    const resolved = resolvePage(location.pathname, documentation, projectData);
     if (resolved.type === "documentation" && resolved.redirectHref) {
       const destination = new URL(resolved.redirectHref, window.location.origin);
       destination.search = location.search;
@@ -99,7 +119,7 @@ function ClientApplication() {
       return;
     }
 
-    const metadata = pageMetadata(location.pathname);
+    const metadata = pageMetadata(location.pathname, documentation, projectData);
     document.title = metadata.title;
     document.querySelector('meta[name="description"]')?.setAttribute("content", metadata.description);
     updateFavicon(metadata.favicon);
@@ -109,12 +129,23 @@ function ClientApplication() {
       return;
     }
     window.requestAnimationFrame(() => scrollToLocation(location.hash));
-  }, [location]);
+  }, [location, documentation, loadedProjects]);
 
-  return <App pathname={location.pathname} />;
+  const projectSlug = projectSlugFromPathname(location.pathname);
+  return <App pathname={location.pathname} search={location.search} documentation={documentation} projectData={projectSlug ? loadedProjects[projectSlug] : undefined} />;
 }
 
-const application = <StrictMode><ClientApplication /></StrictMode>;
-const hasRenderedContent = root.children.length > 0 || Boolean(root.textContent?.trim());
-if (hasRenderedContent) hydrateRoot(root, application);
-else createRoot(root).render(application);
+async function start(): Promise<void> {
+  const indexResponse = await fetch("/_data/index.json");
+  if (!indexResponse.ok) throw new Error("RepoDocs index data is missing.");
+  const documentation = await indexResponse.json() as GeneratedDocumentationIndex;
+  const initialProjects: Record<string, CachedProject> = {};
+  const slug = projectSlugFromPathname(window.location.pathname);
+  if (slug) initialProjects[slug] = await fetchProjectData(slug);
+  const application = <StrictMode><ClientApplication documentation={documentation} initialProjects={initialProjects} /></StrictMode>;
+  const hasRenderedContent = applicationRoot.children.length > 0 || Boolean(applicationRoot.textContent?.trim());
+  if (hasRenderedContent) hydrateRoot(applicationRoot, application);
+  else createRoot(applicationRoot).render(application);
+}
+
+void start().catch((error: unknown) => console.error(error));

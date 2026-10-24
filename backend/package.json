@@ -1,0 +1,19 @@
+{
+  "name": "repodocs-auth-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "bun test",
+    "db:create": "wrangler d1 create repodocs-auth",
+    "db:migrate:local": "wrangler d1 migrations apply repodocs-auth --local",
+    "db:migrate:remote": "wrangler d1 migrations apply repodocs-auth --remote"
+  },
+  "devDependencies": {
+    "wrangler": "^4.45.0"
+  },
+  "dependencies": {
+    "yaml": "^2.9.0"
+  }
+}

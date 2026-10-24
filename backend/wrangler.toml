@@ -1,0 +1,9 @@
+name = "repodocs-auth"
+main = "src/index.ts"
+compatibility_date = "2026-10-24"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "repodocs-auth"
+database_id = "c80339cf-5845-4e70-9d00-570aa11adec1"
+migrations_dir = "migrations"
